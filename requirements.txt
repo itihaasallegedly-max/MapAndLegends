@@ -2,6 +2,7 @@ google-genai
 pillow
 requests
 python-dotenv
+yt-dlp
 # Publishing
 google-api-python-client
 google-auth-oauthlib

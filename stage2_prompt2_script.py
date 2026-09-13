@@ -57,6 +57,16 @@ def validate_script(data, topic_spec):
     for i, seg in enumerate(segments):
         if not isinstance(seg, dict) or not str(seg.get("text", "")).strip():
             raise ScriptGenerationError(f"Segment {i} has no spoken text: {seg!r}")
+        # `image_prompt` and `visual` are older field names; accept both so
+        # scripts written before the move to text-to-video still load.
+        prompt_text = str(seg.get("video_prompt") or seg.get("image_prompt")
+                          or seg.get("visual") or "").strip()
+        if not prompt_text:
+            raise ScriptGenerationError(
+                f"Segment {i} has no video_prompt — the script sheet needs one "
+                f"shot per scene: {seg!r}"
+            )
+        seg["video_prompt"] = prompt_text
         try:
             seg["seconds"] = float(seg.get("seconds", 0))
         except (TypeError, ValueError):
@@ -95,6 +105,33 @@ def generate_script_prompt2(topic_spec):
     subject = topic_spec.get("subject") or topic_spec["topic"]
 
     client = genai.Client(api_key=api_key)
+    import random
+    import time
+
+    # Check for reference videos
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    refs_dir = os.path.join(base_dir, "brand", "references")
+    reference_video_file = None
+    if os.path.exists(refs_dir):
+        videos = [f for f in os.listdir(refs_dir) if f.endswith(".mp4")]
+        if videos:
+            ref_path = os.path.join(refs_dir, random.choice(videos))
+            print(f"[Prompt 2] Found reference video: {ref_path}")
+            print("[Prompt 2] Uploading reference video to Gemini...")
+            reference_video_file = client.files.upload(file=ref_path)
+            
+            print(f"[Prompt 2] Uploaded as {reference_video_file.name}. Waiting for processing...")
+            while reference_video_file.state.name == "PROCESSING":
+                print(".", end="", flush=True)
+                time.sleep(5)
+                reference_video_file = client.files.get(name=reference_video_file.name)
+            
+            if reference_video_file.state.name == "FAILED":
+                print("[Prompt 2] WARNING: Reference video processing failed. Proceeding without it.")
+                reference_video_file = None
+            else:
+                print("\n[Prompt 2] Reference video ready.")
+
     prompt = f"""
     You write scripts for 45-60 second vertical geography shorts aimed at an Indian audience,
     including competitive-exam aspirants.
@@ -110,10 +147,10 @@ def generate_script_prompt2(topic_spec):
       "title_regional": "<the same title in the locally relevant script (Devanagari, Telugu, Tamil, Bengali, Assamese...) — for a non-Indian subject, return the English title>",
       "hook": "<first 3 seconds of spoken script — a question or a surprising number>",
       "segments": [
-        {{"text": "<spoken line>", "visual": "<what is on screen>", "seconds": 4}},
-        {{"text": "<spoken line>", "visual": "<what is on screen>", "seconds": 12}},
-        {{"text": "<spoken line>", "visual": "<what is on screen>", "seconds": 15}},
-        {{"text": "<spoken line>", "visual": "<what is on screen>", "seconds": 14}}
+        {{"text": "<spoken line>", "video_prompt": "<the shot for this scene>", "seconds": 4}},
+        {{"text": "<spoken line>", "video_prompt": "<the shot for this scene>", "seconds": 12}},
+        {{"text": "<spoken line>", "video_prompt": "<the shot for this scene>", "seconds": 15}},
+        {{"text": "<spoken line>", "video_prompt": "<the shot for this scene>", "seconds": 14}}
       ],
       "caption": "<Instagram/YouTube caption, 2 sentences + 5 hashtags>",
       "facts": ["<every discrete factual claim made, one per string>"]
@@ -132,10 +169,28 @@ def generate_script_prompt2(topic_spec):
       official designations) over changeable ones (rankings, populations, records).
     - No "largest/longest/highest" claim unless it is an official designation.
     - Plain spoken Indian English. No jargon, no filler.
+
+    Video prompts — these go to a text-to-video model, so write a SHOT, not a
+    still:
+    - If a reference video is provided, WATCH it carefully. Your `video_prompt`s MUST meticulously emulate its exact visual style and pacing. For example, if the reference video heavily uses 3D map animations, satellite zoom-ins, or highlighted regions, your `video_prompt`s must dictate the exact same map-based visual style for the new script.
+    - One per scene, as a single continuous take. Name the subject, what moves
+      in the frame, and how the camera moves (slow push in, drift left, tilt
+      up, static). Say where the light comes from.
+    - Keep each to one shot. No cuts, no montage, no "then" — a scene that
+      needs two ideas should be two scenes.
+    - Nothing that has to be read: no text, captions, titles, signage, logos,
+      or maps with place names on them. The renderer burns in all the text.
+    - No real, living or identifiable people, and no recognisable faces in
+      close-up.
+    - Do not name the visual style; a house style is appended automatically.
     """
 
+    contents_payload = [prompt]
+    if reference_video_file:
+        contents_payload.append(reference_video_file)
+
     try:
-        response = client.models.generate_content(model=model, contents=prompt)
+        response = client.models.generate_content(model=model, contents=contents_payload)
     except Exception as e:
         raise ScriptGenerationError(
             f"Gemini text call failed for model {model!r}: {type(e).__name__}: {e}\n"
