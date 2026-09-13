@@ -16,6 +16,7 @@ from google.genai import types
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import naming  # noqa: E402
 from pipeline_errors import AssetGenerationError, ConfigError  # noqa: E402
 
 load_dotenv()
@@ -176,10 +177,11 @@ def generate_cover_image(script_data, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     channel_handle()  # fail before spending an API call
 
-    raw_img_path = os.path.join(output_dir, "raw_cover.jpg")
-    final_cover_path = os.path.join(output_dir, "cover.jpg")
-    slide2_path = os.path.join(output_dir, "slide_2_infographic.jpg")
-    slide3_path = os.path.join(output_dir, "slide_3_summary.jpg")
+    slug = script_data.get("topic_id") or naming.slugify(script_data.get("title", ""))
+    raw_img_path = naming.path(output_dir, slug, "cover_raw")
+    final_cover_path = naming.path(output_dir, slug, "cover")
+    slide2_path = naming.path(output_dir, slug, "slide2")
+    slide3_path = naming.path(output_dir, slug, "slide3")
 
     prompt = script_data.get("cover_art_prompt", "")
     api_key = os.getenv("GEMINI_API_KEY")

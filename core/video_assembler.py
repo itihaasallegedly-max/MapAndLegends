@@ -17,6 +17,7 @@ import sys
 from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import naming  # noqa: E402
 from pipeline_errors import AssetGenerationError  # noqa: E402
 
 load_dotenv()
@@ -276,13 +277,13 @@ def _escape_filter_path(path):
 def assemble_video(cover_image_path, audio_path, script_data, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     topic_id = script_data.get("topic_id") or "reel"
-    final_video_path = os.path.join(output_dir, f"{topic_id}_reel.mp4")
-    srt_path = os.path.join(output_dir, "subtitles.srt")
+    final_video_path = naming.path(output_dir, topic_id, "reel")
+    srt_path = naming.path(output_dir, topic_id, "srt")
 
     slides = [
         cover_image_path,
-        os.path.join(output_dir, "slide_2_infographic.jpg"),
-        os.path.join(output_dir, "slide_3_summary.jpg"),
+        naming.path(output_dir, topic_id, "slide2"),
+        naming.path(output_dir, topic_id, "slide3"),
     ]
     missing = [p for p in slides if not os.path.exists(p)]
     if missing:
@@ -296,7 +297,7 @@ def assemble_video(cover_image_path, audio_path, script_data, output_dir):
     audio_duration = probe_duration(audio_path)
     cues = plan_timings(script_data.get("segments", []), audio_duration)
     write_srt(cues, srt_path)
-    ass_path = write_ass(cues, os.path.join(output_dir, "subtitles.ass"))
+    ass_path = write_ass(cues, naming.path(output_dir, topic_id, "ass"))
     durations = plan_slide_durations(
         script_data.get("segments", []), audio_duration, slides=len(slides)
     )
