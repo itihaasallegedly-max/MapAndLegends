@@ -1,0 +1,11 @@
+.env
+venv/
+outputs/
+logs/
+__pycache__/
+*.pyc
+client_secrets.json
+youtube_token.json
+.last_run
+*.aiff
+test_kokoro_direct.wav

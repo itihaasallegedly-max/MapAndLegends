@@ -1,0 +1,3956 @@
+{
+  "generated_at": "2026-09-12T17:55:44+00:00",
+  "weight_basis": "hand_seeded_priors",
+  "weight_basis_note": "Weights are normalised series medians from seed.json. With data_source != 'apify_scrape' they are hand-set priors, not measurements.",
+  "series": [
+    {
+      "name": "Sacred Rivers",
+      "template": "River {river}",
+      "language": "english",
+      "observed_median_views": 1300000,
+      "observed_n": 6,
+      "weight": 1.0
+    },
+    {
+      "name": "Temples & Heritage",
+      "template": "Temples of {state}",
+      "language": "english",
+      "observed_median_views": 1050000,
+      "observed_n": 4,
+      "weight": 0.808
+    },
+    {
+      "name": "State Profiles",
+      "template": "{state} State Facts",
+      "language": "english",
+      "observed_median_views": 890000,
+      "observed_n": 9,
+      "weight": 0.685
+    },
+    {
+      "name": "Symbols & Civics",
+      "template": "{symbol} Secrets",
+      "language": "english",
+      "observed_median_views": 1155000,
+      "observed_n": 4,
+      "weight": 0.888
+    },
+    {
+      "name": "Global Geography",
+      "template": "{country} Unseen",
+      "language": "english",
+      "observed_median_views": 730000,
+      "observed_n": 11,
+      "weight": 0.562
+    }
+  ],
+  "backlog": [
+    {
+      "topic": "Geography and Facts of Andhra Pradesh",
+      "series": "State Profiles",
+      "title_en": "ANDHRA PRADESH",
+      "weight": 0.685,
+      "subject": "Andhra Pradesh"
+    },
+    {
+      "topic": "Districts and Regions of Andhra Pradesh",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF ANDHRA PRADE",
+      "weight": 0.65,
+      "subject": "Andhra Pradesh"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Andhra Pradesh",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF ANDHRA PRADE",
+      "weight": 0.616,
+      "subject": "Andhra Pradesh"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Andhra Pradesh",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF ANDHRA PRADE",
+      "weight": 0.582,
+      "subject": "Andhra Pradesh"
+    },
+    {
+      "topic": "Geography and Facts of Arunachal Pradesh",
+      "series": "State Profiles",
+      "title_en": "ARUNACHAL PRADESH",
+      "weight": 0.685,
+      "subject": "Arunachal Pradesh"
+    },
+    {
+      "topic": "Districts and Regions of Arunachal Pradesh",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF ARUNACHAL PR",
+      "weight": 0.65,
+      "subject": "Arunachal Pradesh"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Arunachal Pradesh",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF ARUNACHAL PR",
+      "weight": 0.616,
+      "subject": "Arunachal Pradesh"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Arunachal Pradesh",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF ARUNACHAL PR",
+      "weight": 0.582,
+      "subject": "Arunachal Pradesh"
+    },
+    {
+      "topic": "Geography and Facts of Assam",
+      "series": "State Profiles",
+      "title_en": "ASSAM",
+      "weight": 0.685,
+      "subject": "Assam"
+    },
+    {
+      "topic": "Districts and Regions of Assam",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF ASSAM",
+      "weight": 0.65,
+      "subject": "Assam"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Assam",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF ASSAM",
+      "weight": 0.616,
+      "subject": "Assam"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Assam",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF ASSAM",
+      "weight": 0.582,
+      "subject": "Assam"
+    },
+    {
+      "topic": "Geography and Facts of Bihar",
+      "series": "State Profiles",
+      "title_en": "BIHAR",
+      "weight": 0.685,
+      "subject": "Bihar"
+    },
+    {
+      "topic": "Districts and Regions of Bihar",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF BIHAR",
+      "weight": 0.65,
+      "subject": "Bihar"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Bihar",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF BIHAR",
+      "weight": 0.616,
+      "subject": "Bihar"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Bihar",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF BIHAR",
+      "weight": 0.582,
+      "subject": "Bihar"
+    },
+    {
+      "topic": "Geography and Facts of Chhattisgarh",
+      "series": "State Profiles",
+      "title_en": "CHHATTISGARH",
+      "weight": 0.685,
+      "subject": "Chhattisgarh"
+    },
+    {
+      "topic": "Districts and Regions of Chhattisgarh",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF CHHATTISGARH",
+      "weight": 0.65,
+      "subject": "Chhattisgarh"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Chhattisgarh",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF CHHATTISGARH",
+      "weight": 0.616,
+      "subject": "Chhattisgarh"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Chhattisgarh",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF CHHATTISGARH",
+      "weight": 0.582,
+      "subject": "Chhattisgarh"
+    },
+    {
+      "topic": "Geography and Facts of Goa",
+      "series": "State Profiles",
+      "title_en": "GOA",
+      "weight": 0.685,
+      "subject": "Goa"
+    },
+    {
+      "topic": "Districts and Regions of Goa",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF GOA",
+      "weight": 0.65,
+      "subject": "Goa"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Goa",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF GOA",
+      "weight": 0.616,
+      "subject": "Goa"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Goa",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF GOA",
+      "weight": 0.582,
+      "subject": "Goa"
+    },
+    {
+      "topic": "Geography and Facts of Gujarat",
+      "series": "State Profiles",
+      "title_en": "GUJARAT",
+      "weight": 0.685,
+      "subject": "Gujarat"
+    },
+    {
+      "topic": "Districts and Regions of Gujarat",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF GUJARAT",
+      "weight": 0.65,
+      "subject": "Gujarat"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Gujarat",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF GUJARAT",
+      "weight": 0.616,
+      "subject": "Gujarat"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Gujarat",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF GUJARAT",
+      "weight": 0.582,
+      "subject": "Gujarat"
+    },
+    {
+      "topic": "Geography and Facts of Haryana",
+      "series": "State Profiles",
+      "title_en": "HARYANA",
+      "weight": 0.685,
+      "subject": "Haryana"
+    },
+    {
+      "topic": "Districts and Regions of Haryana",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF HARYANA",
+      "weight": 0.65,
+      "subject": "Haryana"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Haryana",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF HARYANA",
+      "weight": 0.616,
+      "subject": "Haryana"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Haryana",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF HARYANA",
+      "weight": 0.582,
+      "subject": "Haryana"
+    },
+    {
+      "topic": "Geography and Facts of Himachal Pradesh",
+      "series": "State Profiles",
+      "title_en": "HIMACHAL PRADESH",
+      "weight": 0.685,
+      "subject": "Himachal Pradesh"
+    },
+    {
+      "topic": "Districts and Regions of Himachal Pradesh",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF HIMACHAL PRA",
+      "weight": 0.65,
+      "subject": "Himachal Pradesh"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Himachal Pradesh",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF HIMACHAL PRA",
+      "weight": 0.616,
+      "subject": "Himachal Pradesh"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Himachal Pradesh",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF HIMACHAL PRA",
+      "weight": 0.582,
+      "subject": "Himachal Pradesh"
+    },
+    {
+      "topic": "Geography and Facts of Jharkhand",
+      "series": "State Profiles",
+      "title_en": "JHARKHAND",
+      "weight": 0.685,
+      "subject": "Jharkhand"
+    },
+    {
+      "topic": "Districts and Regions of Jharkhand",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF JHARKHAND",
+      "weight": 0.65,
+      "subject": "Jharkhand"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Jharkhand",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF JHARKHAND",
+      "weight": 0.616,
+      "subject": "Jharkhand"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Jharkhand",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF JHARKHAND",
+      "weight": 0.582,
+      "subject": "Jharkhand"
+    },
+    {
+      "topic": "Geography and Facts of Karnataka",
+      "series": "State Profiles",
+      "title_en": "KARNATAKA",
+      "weight": 0.685,
+      "subject": "Karnataka"
+    },
+    {
+      "topic": "Districts and Regions of Karnataka",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF KARNATAKA",
+      "weight": 0.65,
+      "subject": "Karnataka"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Karnataka",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF KARNATAKA",
+      "weight": 0.616,
+      "subject": "Karnataka"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Karnataka",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF KARNATAKA",
+      "weight": 0.582,
+      "subject": "Karnataka"
+    },
+    {
+      "topic": "Geography and Facts of Kerala",
+      "series": "State Profiles",
+      "title_en": "KERALA",
+      "weight": 0.685,
+      "subject": "Kerala"
+    },
+    {
+      "topic": "Districts and Regions of Kerala",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF KERALA",
+      "weight": 0.65,
+      "subject": "Kerala"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Kerala",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF KERALA",
+      "weight": 0.616,
+      "subject": "Kerala"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Kerala",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF KERALA",
+      "weight": 0.582,
+      "subject": "Kerala"
+    },
+    {
+      "topic": "Geography and Facts of Madhya Pradesh",
+      "series": "State Profiles",
+      "title_en": "MADHYA PRADESH",
+      "weight": 0.685,
+      "subject": "Madhya Pradesh"
+    },
+    {
+      "topic": "Districts and Regions of Madhya Pradesh",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF MADHYA PRADE",
+      "weight": 0.65,
+      "subject": "Madhya Pradesh"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Madhya Pradesh",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF MADHYA PRADE",
+      "weight": 0.616,
+      "subject": "Madhya Pradesh"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Madhya Pradesh",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF MADHYA PRADE",
+      "weight": 0.582,
+      "subject": "Madhya Pradesh"
+    },
+    {
+      "topic": "Geography and Facts of Maharashtra",
+      "series": "State Profiles",
+      "title_en": "MAHARASHTRA",
+      "weight": 0.685,
+      "subject": "Maharashtra"
+    },
+    {
+      "topic": "Districts and Regions of Maharashtra",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF MAHARASHTRA",
+      "weight": 0.65,
+      "subject": "Maharashtra"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Maharashtra",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF MAHARASHTRA",
+      "weight": 0.616,
+      "subject": "Maharashtra"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Maharashtra",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF MAHARASHTRA",
+      "weight": 0.582,
+      "subject": "Maharashtra"
+    },
+    {
+      "topic": "Geography and Facts of Manipur",
+      "series": "State Profiles",
+      "title_en": "MANIPUR",
+      "weight": 0.685,
+      "subject": "Manipur"
+    },
+    {
+      "topic": "Districts and Regions of Manipur",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF MANIPUR",
+      "weight": 0.65,
+      "subject": "Manipur"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Manipur",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF MANIPUR",
+      "weight": 0.616,
+      "subject": "Manipur"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Manipur",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF MANIPUR",
+      "weight": 0.582,
+      "subject": "Manipur"
+    },
+    {
+      "topic": "Geography and Facts of Meghalaya",
+      "series": "State Profiles",
+      "title_en": "MEGHALAYA",
+      "weight": 0.685,
+      "subject": "Meghalaya"
+    },
+    {
+      "topic": "Districts and Regions of Meghalaya",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF MEGHALAYA",
+      "weight": 0.65,
+      "subject": "Meghalaya"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Meghalaya",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF MEGHALAYA",
+      "weight": 0.616,
+      "subject": "Meghalaya"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Meghalaya",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF MEGHALAYA",
+      "weight": 0.582,
+      "subject": "Meghalaya"
+    },
+    {
+      "topic": "Geography and Facts of Mizoram",
+      "series": "State Profiles",
+      "title_en": "MIZORAM",
+      "weight": 0.685,
+      "subject": "Mizoram"
+    },
+    {
+      "topic": "Districts and Regions of Mizoram",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF MIZORAM",
+      "weight": 0.65,
+      "subject": "Mizoram"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Mizoram",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF MIZORAM",
+      "weight": 0.616,
+      "subject": "Mizoram"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Mizoram",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF MIZORAM",
+      "weight": 0.582,
+      "subject": "Mizoram"
+    },
+    {
+      "topic": "Geography and Facts of Nagaland",
+      "series": "State Profiles",
+      "title_en": "NAGALAND",
+      "weight": 0.685,
+      "subject": "Nagaland"
+    },
+    {
+      "topic": "Districts and Regions of Nagaland",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF NAGALAND",
+      "weight": 0.65,
+      "subject": "Nagaland"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Nagaland",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF NAGALAND",
+      "weight": 0.616,
+      "subject": "Nagaland"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Nagaland",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF NAGALAND",
+      "weight": 0.582,
+      "subject": "Nagaland"
+    },
+    {
+      "topic": "Geography and Facts of Odisha",
+      "series": "State Profiles",
+      "title_en": "ODISHA",
+      "weight": 0.685,
+      "subject": "Odisha"
+    },
+    {
+      "topic": "Districts and Regions of Odisha",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF ODISHA",
+      "weight": 0.65,
+      "subject": "Odisha"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Odisha",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF ODISHA",
+      "weight": 0.616,
+      "subject": "Odisha"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Odisha",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF ODISHA",
+      "weight": 0.582,
+      "subject": "Odisha"
+    },
+    {
+      "topic": "Geography and Facts of Punjab",
+      "series": "State Profiles",
+      "title_en": "PUNJAB",
+      "weight": 0.685,
+      "subject": "Punjab"
+    },
+    {
+      "topic": "Districts and Regions of Punjab",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF PUNJAB",
+      "weight": 0.65,
+      "subject": "Punjab"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Punjab",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF PUNJAB",
+      "weight": 0.616,
+      "subject": "Punjab"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Punjab",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF PUNJAB",
+      "weight": 0.582,
+      "subject": "Punjab"
+    },
+    {
+      "topic": "Geography and Facts of Rajasthan",
+      "series": "State Profiles",
+      "title_en": "RAJASTHAN",
+      "weight": 0.685,
+      "subject": "Rajasthan"
+    },
+    {
+      "topic": "Districts and Regions of Rajasthan",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF RAJASTHAN",
+      "weight": 0.65,
+      "subject": "Rajasthan"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Rajasthan",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF RAJASTHAN",
+      "weight": 0.616,
+      "subject": "Rajasthan"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Rajasthan",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF RAJASTHAN",
+      "weight": 0.582,
+      "subject": "Rajasthan"
+    },
+    {
+      "topic": "Geography and Facts of Sikkim",
+      "series": "State Profiles",
+      "title_en": "SIKKIM",
+      "weight": 0.685,
+      "subject": "Sikkim"
+    },
+    {
+      "topic": "Districts and Regions of Sikkim",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF SIKKIM",
+      "weight": 0.65,
+      "subject": "Sikkim"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Sikkim",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF SIKKIM",
+      "weight": 0.616,
+      "subject": "Sikkim"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Sikkim",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF SIKKIM",
+      "weight": 0.582,
+      "subject": "Sikkim"
+    },
+    {
+      "topic": "Geography and Facts of Tamil Nadu",
+      "series": "State Profiles",
+      "title_en": "TAMIL NADU",
+      "weight": 0.685,
+      "subject": "Tamil Nadu"
+    },
+    {
+      "topic": "Districts and Regions of Tamil Nadu",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF TAMIL NADU",
+      "weight": 0.65,
+      "subject": "Tamil Nadu"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Tamil Nadu",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF TAMIL NADU",
+      "weight": 0.616,
+      "subject": "Tamil Nadu"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Tamil Nadu",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF TAMIL NADU",
+      "weight": 0.582,
+      "subject": "Tamil Nadu"
+    },
+    {
+      "topic": "Geography and Facts of Telangana",
+      "series": "State Profiles",
+      "title_en": "TELANGANA",
+      "weight": 0.685,
+      "subject": "Telangana"
+    },
+    {
+      "topic": "Districts and Regions of Telangana",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF TELANGANA",
+      "weight": 0.65,
+      "subject": "Telangana"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Telangana",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF TELANGANA",
+      "weight": 0.616,
+      "subject": "Telangana"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Telangana",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF TELANGANA",
+      "weight": 0.582,
+      "subject": "Telangana"
+    },
+    {
+      "topic": "Geography and Facts of Tripura",
+      "series": "State Profiles",
+      "title_en": "TRIPURA",
+      "weight": 0.685,
+      "subject": "Tripura"
+    },
+    {
+      "topic": "Districts and Regions of Tripura",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF TRIPURA",
+      "weight": 0.65,
+      "subject": "Tripura"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Tripura",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF TRIPURA",
+      "weight": 0.616,
+      "subject": "Tripura"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Tripura",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF TRIPURA",
+      "weight": 0.582,
+      "subject": "Tripura"
+    },
+    {
+      "topic": "Geography and Facts of Uttar Pradesh",
+      "series": "State Profiles",
+      "title_en": "UTTAR PRADESH",
+      "weight": 0.685,
+      "subject": "Uttar Pradesh"
+    },
+    {
+      "topic": "Districts and Regions of Uttar Pradesh",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF UTTAR PRADES",
+      "weight": 0.65,
+      "subject": "Uttar Pradesh"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Uttar Pradesh",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF UTTAR PRADES",
+      "weight": 0.616,
+      "subject": "Uttar Pradesh"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Uttar Pradesh",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF UTTAR PRADES",
+      "weight": 0.582,
+      "subject": "Uttar Pradesh"
+    },
+    {
+      "topic": "Geography and Facts of Uttarakhand",
+      "series": "State Profiles",
+      "title_en": "UTTARAKHAND",
+      "weight": 0.685,
+      "subject": "Uttarakhand"
+    },
+    {
+      "topic": "Districts and Regions of Uttarakhand",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF UTTARAKHAND",
+      "weight": 0.65,
+      "subject": "Uttarakhand"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Uttarakhand",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF UTTARAKHAND",
+      "weight": 0.616,
+      "subject": "Uttarakhand"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Uttarakhand",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF UTTARAKHAND",
+      "weight": 0.582,
+      "subject": "Uttarakhand"
+    },
+    {
+      "topic": "Geography and Facts of West Bengal",
+      "series": "State Profiles",
+      "title_en": "WEST BENGAL",
+      "weight": 0.685,
+      "subject": "West Bengal"
+    },
+    {
+      "topic": "Districts and Regions of West Bengal",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF WEST BENGAL",
+      "weight": 0.65,
+      "subject": "West Bengal"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of West Bengal",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF WEST BENGAL",
+      "weight": 0.616,
+      "subject": "West Bengal"
+    },
+    {
+      "topic": "Cultural Symbols and Food of West Bengal",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF WEST BENGAL",
+      "weight": 0.582,
+      "subject": "West Bengal"
+    },
+    {
+      "topic": "Geography and Facts of Andaman and Nicobar",
+      "series": "State Profiles",
+      "title_en": "ANDAMAN AND NICOBAR",
+      "weight": 0.685,
+      "subject": "Andaman and Nicobar"
+    },
+    {
+      "topic": "Districts and Regions of Andaman and Nicobar",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF ANDAMAN AND ",
+      "weight": 0.65,
+      "subject": "Andaman and Nicobar"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Andaman and Nicobar",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF ANDAMAN AND ",
+      "weight": 0.616,
+      "subject": "Andaman and Nicobar"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Andaman and Nicobar",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF ANDAMAN AND ",
+      "weight": 0.582,
+      "subject": "Andaman and Nicobar"
+    },
+    {
+      "topic": "Geography and Facts of Chandigarh",
+      "series": "State Profiles",
+      "title_en": "CHANDIGARH",
+      "weight": 0.685,
+      "subject": "Chandigarh"
+    },
+    {
+      "topic": "Districts and Regions of Chandigarh",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF CHANDIGARH",
+      "weight": 0.65,
+      "subject": "Chandigarh"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Chandigarh",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF CHANDIGARH",
+      "weight": 0.616,
+      "subject": "Chandigarh"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Chandigarh",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF CHANDIGARH",
+      "weight": 0.582,
+      "subject": "Chandigarh"
+    },
+    {
+      "topic": "Geography and Facts of Dadra and Nagar Haveli",
+      "series": "State Profiles",
+      "title_en": "DADRA AND NAGAR HAVELI",
+      "weight": 0.685,
+      "subject": "Dadra and Nagar Haveli"
+    },
+    {
+      "topic": "Districts and Regions of Dadra and Nagar Haveli",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF DADRA AND NA",
+      "weight": 0.65,
+      "subject": "Dadra and Nagar Haveli"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Dadra and Nagar Haveli",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF DADRA AND NA",
+      "weight": 0.616,
+      "subject": "Dadra and Nagar Haveli"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Dadra and Nagar Haveli",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF DADRA AND NA",
+      "weight": 0.582,
+      "subject": "Dadra and Nagar Haveli"
+    },
+    {
+      "topic": "Geography and Facts of Delhi",
+      "series": "State Profiles",
+      "title_en": "DELHI",
+      "weight": 0.685,
+      "subject": "Delhi"
+    },
+    {
+      "topic": "Districts and Regions of Delhi",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF DELHI",
+      "weight": 0.65,
+      "subject": "Delhi"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Delhi",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF DELHI",
+      "weight": 0.616,
+      "subject": "Delhi"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Delhi",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF DELHI",
+      "weight": 0.582,
+      "subject": "Delhi"
+    },
+    {
+      "topic": "Geography and Facts of Jammu and Kashmir",
+      "series": "State Profiles",
+      "title_en": "JAMMU AND KASHMIR",
+      "weight": 0.685,
+      "subject": "Jammu and Kashmir"
+    },
+    {
+      "topic": "Districts and Regions of Jammu and Kashmir",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF JAMMU AND KA",
+      "weight": 0.65,
+      "subject": "Jammu and Kashmir"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Jammu and Kashmir",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF JAMMU AND KA",
+      "weight": 0.616,
+      "subject": "Jammu and Kashmir"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Jammu and Kashmir",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF JAMMU AND KA",
+      "weight": 0.582,
+      "subject": "Jammu and Kashmir"
+    },
+    {
+      "topic": "Geography and Facts of Ladakh",
+      "series": "State Profiles",
+      "title_en": "LADAKH",
+      "weight": 0.685,
+      "subject": "Ladakh"
+    },
+    {
+      "topic": "Districts and Regions of Ladakh",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF LADAKH",
+      "weight": 0.65,
+      "subject": "Ladakh"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Ladakh",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF LADAKH",
+      "weight": 0.616,
+      "subject": "Ladakh"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Ladakh",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF LADAKH",
+      "weight": 0.582,
+      "subject": "Ladakh"
+    },
+    {
+      "topic": "Geography and Facts of Lakshadweep",
+      "series": "State Profiles",
+      "title_en": "LAKSHADWEEP",
+      "weight": 0.685,
+      "subject": "Lakshadweep"
+    },
+    {
+      "topic": "Districts and Regions of Lakshadweep",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF LAKSHADWEEP",
+      "weight": 0.65,
+      "subject": "Lakshadweep"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Lakshadweep",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF LAKSHADWEEP",
+      "weight": 0.616,
+      "subject": "Lakshadweep"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Lakshadweep",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF LAKSHADWEEP",
+      "weight": 0.582,
+      "subject": "Lakshadweep"
+    },
+    {
+      "topic": "Geography and Facts of Puducherry",
+      "series": "State Profiles",
+      "title_en": "PUDUCHERRY",
+      "weight": 0.685,
+      "subject": "Puducherry"
+    },
+    {
+      "topic": "Districts and Regions of Puducherry",
+      "series": "State Profiles",
+      "title_en": "DISTRICTS OF PUDUCHERRY",
+      "weight": 0.65,
+      "subject": "Puducherry"
+    },
+    {
+      "topic": "Highest Peaks and Rivers of Puducherry",
+      "series": "State Profiles",
+      "title_en": "GEOGRAPHY OF PUDUCHERRY",
+      "weight": 0.616,
+      "subject": "Puducherry"
+    },
+    {
+      "topic": "Cultural Symbols and Food of Puducherry",
+      "series": "State Profiles",
+      "title_en": "CULTURE OF PUDUCHERRY",
+      "weight": 0.582,
+      "subject": "Puducherry"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Andhra Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF ANDHRA PRADE",
+      "weight": 0.808,
+      "subject": "Andhra Pradesh"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Andhra Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF ANDHRA PRADE",
+      "weight": 0.727,
+      "subject": "Andhra Pradesh"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Andhra Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF ANDHRA PRADE",
+      "weight": 0.711,
+      "subject": "Andhra Pradesh"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Arunachal Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF ARUNACHAL PR",
+      "weight": 0.808,
+      "subject": "Arunachal Pradesh"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Arunachal Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF ARUNACHAL PR",
+      "weight": 0.727,
+      "subject": "Arunachal Pradesh"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Arunachal Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF ARUNACHAL PR",
+      "weight": 0.711,
+      "subject": "Arunachal Pradesh"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Assam",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF ASSAM",
+      "weight": 0.808,
+      "subject": "Assam"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Assam",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF ASSAM",
+      "weight": 0.727,
+      "subject": "Assam"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Assam",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF ASSAM",
+      "weight": 0.711,
+      "subject": "Assam"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Bihar",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF BIHAR",
+      "weight": 0.808,
+      "subject": "Bihar"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Bihar",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF BIHAR",
+      "weight": 0.727,
+      "subject": "Bihar"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Bihar",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF BIHAR",
+      "weight": 0.711,
+      "subject": "Bihar"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Chhattisgarh",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF CHHATTISGARH",
+      "weight": 0.808,
+      "subject": "Chhattisgarh"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Chhattisgarh",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF CHHATTISGARH",
+      "weight": 0.727,
+      "subject": "Chhattisgarh"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Chhattisgarh",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF CHHATTISGARH",
+      "weight": 0.711,
+      "subject": "Chhattisgarh"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Goa",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF GOA",
+      "weight": 0.808,
+      "subject": "Goa"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Goa",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF GOA",
+      "weight": 0.727,
+      "subject": "Goa"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Goa",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF GOA",
+      "weight": 0.711,
+      "subject": "Goa"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Gujarat",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF GUJARAT",
+      "weight": 0.808,
+      "subject": "Gujarat"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Gujarat",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF GUJARAT",
+      "weight": 0.727,
+      "subject": "Gujarat"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Gujarat",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF GUJARAT",
+      "weight": 0.711,
+      "subject": "Gujarat"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Haryana",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF HARYANA",
+      "weight": 0.808,
+      "subject": "Haryana"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Haryana",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF HARYANA",
+      "weight": 0.727,
+      "subject": "Haryana"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Haryana",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF HARYANA",
+      "weight": 0.711,
+      "subject": "Haryana"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Himachal Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF HIMACHAL PRA",
+      "weight": 0.808,
+      "subject": "Himachal Pradesh"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Himachal Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF HIMACHAL PRA",
+      "weight": 0.727,
+      "subject": "Himachal Pradesh"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Himachal Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF HIMACHAL PRA",
+      "weight": 0.711,
+      "subject": "Himachal Pradesh"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Jharkhand",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF JHARKHAND",
+      "weight": 0.808,
+      "subject": "Jharkhand"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Jharkhand",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF JHARKHAND",
+      "weight": 0.727,
+      "subject": "Jharkhand"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Jharkhand",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF JHARKHAND",
+      "weight": 0.711,
+      "subject": "Jharkhand"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Karnataka",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF KARNATAKA",
+      "weight": 0.808,
+      "subject": "Karnataka"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Karnataka",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF KARNATAKA",
+      "weight": 0.727,
+      "subject": "Karnataka"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Karnataka",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF KARNATAKA",
+      "weight": 0.711,
+      "subject": "Karnataka"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Kerala",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF KERALA",
+      "weight": 0.808,
+      "subject": "Kerala"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Kerala",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF KERALA",
+      "weight": 0.727,
+      "subject": "Kerala"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Kerala",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF KERALA",
+      "weight": 0.711,
+      "subject": "Kerala"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Madhya Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF MADHYA PRADE",
+      "weight": 0.808,
+      "subject": "Madhya Pradesh"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Madhya Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF MADHYA PRADE",
+      "weight": 0.727,
+      "subject": "Madhya Pradesh"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Madhya Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF MADHYA PRADE",
+      "weight": 0.711,
+      "subject": "Madhya Pradesh"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Maharashtra",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF MAHARASHTRA",
+      "weight": 0.808,
+      "subject": "Maharashtra"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Maharashtra",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF MAHARASHTRA",
+      "weight": 0.727,
+      "subject": "Maharashtra"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Maharashtra",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF MAHARASHTRA",
+      "weight": 0.711,
+      "subject": "Maharashtra"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Manipur",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF MANIPUR",
+      "weight": 0.808,
+      "subject": "Manipur"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Manipur",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF MANIPUR",
+      "weight": 0.727,
+      "subject": "Manipur"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Manipur",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF MANIPUR",
+      "weight": 0.711,
+      "subject": "Manipur"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Meghalaya",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF MEGHALAYA",
+      "weight": 0.808,
+      "subject": "Meghalaya"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Meghalaya",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF MEGHALAYA",
+      "weight": 0.727,
+      "subject": "Meghalaya"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Meghalaya",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF MEGHALAYA",
+      "weight": 0.711,
+      "subject": "Meghalaya"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Mizoram",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF MIZORAM",
+      "weight": 0.808,
+      "subject": "Mizoram"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Mizoram",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF MIZORAM",
+      "weight": 0.727,
+      "subject": "Mizoram"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Mizoram",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF MIZORAM",
+      "weight": 0.711,
+      "subject": "Mizoram"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Nagaland",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF NAGALAND",
+      "weight": 0.808,
+      "subject": "Nagaland"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Nagaland",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF NAGALAND",
+      "weight": 0.727,
+      "subject": "Nagaland"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Nagaland",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF NAGALAND",
+      "weight": 0.711,
+      "subject": "Nagaland"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Odisha",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF ODISHA",
+      "weight": 0.808,
+      "subject": "Odisha"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Odisha",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF ODISHA",
+      "weight": 0.727,
+      "subject": "Odisha"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Odisha",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF ODISHA",
+      "weight": 0.711,
+      "subject": "Odisha"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Punjab",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF PUNJAB",
+      "weight": 0.808,
+      "subject": "Punjab"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Punjab",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF PUNJAB",
+      "weight": 0.727,
+      "subject": "Punjab"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Punjab",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF PUNJAB",
+      "weight": 0.711,
+      "subject": "Punjab"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Rajasthan",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF RAJASTHAN",
+      "weight": 0.808,
+      "subject": "Rajasthan"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Rajasthan",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF RAJASTHAN",
+      "weight": 0.727,
+      "subject": "Rajasthan"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Rajasthan",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF RAJASTHAN",
+      "weight": 0.711,
+      "subject": "Rajasthan"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Sikkim",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF SIKKIM",
+      "weight": 0.808,
+      "subject": "Sikkim"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Sikkim",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF SIKKIM",
+      "weight": 0.727,
+      "subject": "Sikkim"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Sikkim",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF SIKKIM",
+      "weight": 0.711,
+      "subject": "Sikkim"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Tamil Nadu",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF TAMIL NADU",
+      "weight": 0.808,
+      "subject": "Tamil Nadu"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Tamil Nadu",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF TAMIL NADU",
+      "weight": 0.727,
+      "subject": "Tamil Nadu"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Tamil Nadu",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF TAMIL NADU",
+      "weight": 0.711,
+      "subject": "Tamil Nadu"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Telangana",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF TELANGANA",
+      "weight": 0.808,
+      "subject": "Telangana"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Telangana",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF TELANGANA",
+      "weight": 0.727,
+      "subject": "Telangana"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Telangana",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF TELANGANA",
+      "weight": 0.711,
+      "subject": "Telangana"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Tripura",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF TRIPURA",
+      "weight": 0.808,
+      "subject": "Tripura"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Tripura",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF TRIPURA",
+      "weight": 0.727,
+      "subject": "Tripura"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Tripura",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF TRIPURA",
+      "weight": 0.711,
+      "subject": "Tripura"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Uttar Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF UTTAR PRADES",
+      "weight": 0.808,
+      "subject": "Uttar Pradesh"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Uttar Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF UTTAR PRADES",
+      "weight": 0.727,
+      "subject": "Uttar Pradesh"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Uttar Pradesh",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF UTTAR PRADES",
+      "weight": 0.711,
+      "subject": "Uttar Pradesh"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Uttarakhand",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF UTTARAKHAND",
+      "weight": 0.808,
+      "subject": "Uttarakhand"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Uttarakhand",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF UTTARAKHAND",
+      "weight": 0.727,
+      "subject": "Uttarakhand"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Uttarakhand",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF UTTARAKHAND",
+      "weight": 0.711,
+      "subject": "Uttarakhand"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of West Bengal",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF WEST BENGAL",
+      "weight": 0.808,
+      "subject": "West Bengal"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of West Bengal",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF WEST BENGAL",
+      "weight": 0.727,
+      "subject": "West Bengal"
+    },
+    {
+      "topic": "Historical Forts and Architecture of West Bengal",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF WEST BENGAL",
+      "weight": 0.711,
+      "subject": "West Bengal"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Andaman and Nicobar",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF ANDAMAN AND ",
+      "weight": 0.808,
+      "subject": "Andaman and Nicobar"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Andaman and Nicobar",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF ANDAMAN AND ",
+      "weight": 0.727,
+      "subject": "Andaman and Nicobar"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Andaman and Nicobar",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF ANDAMAN AND ",
+      "weight": 0.711,
+      "subject": "Andaman and Nicobar"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Chandigarh",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF CHANDIGARH",
+      "weight": 0.808,
+      "subject": "Chandigarh"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Chandigarh",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF CHANDIGARH",
+      "weight": 0.727,
+      "subject": "Chandigarh"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Chandigarh",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF CHANDIGARH",
+      "weight": 0.711,
+      "subject": "Chandigarh"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Dadra and Nagar Haveli",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF DADRA AND NA",
+      "weight": 0.808,
+      "subject": "Dadra and Nagar Haveli"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Dadra and Nagar Haveli",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF DADRA AND NA",
+      "weight": 0.727,
+      "subject": "Dadra and Nagar Haveli"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Dadra and Nagar Haveli",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF DADRA AND NA",
+      "weight": 0.711,
+      "subject": "Dadra and Nagar Haveli"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Delhi",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF DELHI",
+      "weight": 0.808,
+      "subject": "Delhi"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Delhi",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF DELHI",
+      "weight": 0.727,
+      "subject": "Delhi"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Delhi",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF DELHI",
+      "weight": 0.711,
+      "subject": "Delhi"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Jammu and Kashmir",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF JAMMU AND KA",
+      "weight": 0.808,
+      "subject": "Jammu and Kashmir"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Jammu and Kashmir",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF JAMMU AND KA",
+      "weight": 0.727,
+      "subject": "Jammu and Kashmir"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Jammu and Kashmir",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF JAMMU AND KA",
+      "weight": 0.711,
+      "subject": "Jammu and Kashmir"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Ladakh",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF LADAKH",
+      "weight": 0.808,
+      "subject": "Ladakh"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Ladakh",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF LADAKH",
+      "weight": 0.727,
+      "subject": "Ladakh"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Ladakh",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF LADAKH",
+      "weight": 0.711,
+      "subject": "Ladakh"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Lakshadweep",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF LAKSHADWEEP",
+      "weight": 0.808,
+      "subject": "Lakshadweep"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Lakshadweep",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF LAKSHADWEEP",
+      "weight": 0.727,
+      "subject": "Lakshadweep"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Lakshadweep",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF LAKSHADWEEP",
+      "weight": 0.711,
+      "subject": "Lakshadweep"
+    },
+    {
+      "topic": "Ancient Temples and Heritage of Puducherry",
+      "series": "Temples & Heritage",
+      "title_en": "TEMPLES OF PUDUCHERRY",
+      "weight": 0.808,
+      "subject": "Puducherry"
+    },
+    {
+      "topic": "Sacred Monasteries and Shrines of Puducherry",
+      "series": "Temples & Heritage",
+      "title_en": "SHRINES OF PUDUCHERRY",
+      "weight": 0.727,
+      "subject": "Puducherry"
+    },
+    {
+      "topic": "Historical Forts and Architecture of Puducherry",
+      "series": "Temples & Heritage",
+      "title_en": "FORTS OF PUDUCHERRY",
+      "weight": 0.711,
+      "subject": "Puducherry"
+    },
+    {
+      "topic": "Course and Origin of River Ganga",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER GANGA",
+      "weight": 1.0,
+      "subject": "the Ganga river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Ganga",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF GANGA",
+      "weight": 0.92,
+      "subject": "the Ganga river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Ganga",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF GANGA",
+      "weight": 0.95,
+      "subject": "the Ganga river"
+    },
+    {
+      "topic": "Course and Origin of River Yamuna",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER YAMUNA",
+      "weight": 1.0,
+      "subject": "the Yamuna river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Yamuna",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF YAMUNA",
+      "weight": 0.92,
+      "subject": "the Yamuna river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Yamuna",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF YAMUNA",
+      "weight": 0.95,
+      "subject": "the Yamuna river"
+    },
+    {
+      "topic": "Course and Origin of River Godavari",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER GODAVARI",
+      "weight": 1.0,
+      "subject": "the Godavari river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Godavari",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF GODAVARI",
+      "weight": 0.92,
+      "subject": "the Godavari river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Godavari",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF GODAVARI",
+      "weight": 0.95,
+      "subject": "the Godavari river"
+    },
+    {
+      "topic": "Course and Origin of River Krishna",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER KRISHNA",
+      "weight": 1.0,
+      "subject": "the Krishna river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Krishna",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF KRISHNA",
+      "weight": 0.92,
+      "subject": "the Krishna river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Krishna",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF KRISHNA",
+      "weight": 0.95,
+      "subject": "the Krishna river"
+    },
+    {
+      "topic": "Course and Origin of River Kaveri",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER KAVERI",
+      "weight": 1.0,
+      "subject": "the Kaveri river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Kaveri",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF KAVERI",
+      "weight": 0.92,
+      "subject": "the Kaveri river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Kaveri",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF KAVERI",
+      "weight": 0.95,
+      "subject": "the Kaveri river"
+    },
+    {
+      "topic": "Course and Origin of River Narmada",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER NARMADA",
+      "weight": 1.0,
+      "subject": "the Narmada river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Narmada",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF NARMADA",
+      "weight": 0.92,
+      "subject": "the Narmada river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Narmada",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF NARMADA",
+      "weight": 0.95,
+      "subject": "the Narmada river"
+    },
+    {
+      "topic": "Course and Origin of River Tapi",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER TAPI",
+      "weight": 1.0,
+      "subject": "the Tapi river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Tapi",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF TAPI",
+      "weight": 0.92,
+      "subject": "the Tapi river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Tapi",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF TAPI",
+      "weight": 0.95,
+      "subject": "the Tapi river"
+    },
+    {
+      "topic": "Course and Origin of River Mahanadi",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER MAHANADI",
+      "weight": 1.0,
+      "subject": "the Mahanadi river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Mahanadi",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF MAHANADI",
+      "weight": 0.92,
+      "subject": "the Mahanadi river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Mahanadi",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF MAHANADI",
+      "weight": 0.95,
+      "subject": "the Mahanadi river"
+    },
+    {
+      "topic": "Course and Origin of River Brahmaputra",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER BRAHMAPUTRA",
+      "weight": 1.0,
+      "subject": "the Brahmaputra river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Brahmaputra",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF BRAHMAPUTRA",
+      "weight": 0.92,
+      "subject": "the Brahmaputra river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Brahmaputra",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF BRAHMAPUTRA",
+      "weight": 0.95,
+      "subject": "the Brahmaputra river"
+    },
+    {
+      "topic": "Course and Origin of River Indus",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER INDUS",
+      "weight": 1.0,
+      "subject": "the Indus river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Indus",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF INDUS",
+      "weight": 0.92,
+      "subject": "the Indus river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Indus",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF INDUS",
+      "weight": 0.95,
+      "subject": "the Indus river"
+    },
+    {
+      "topic": "Course and Origin of River Saraswati",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER SARASWATI",
+      "weight": 1.0,
+      "subject": "the Saraswati river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Saraswati",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF SARASWATI",
+      "weight": 0.92,
+      "subject": "the Saraswati river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Saraswati",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF SARASWATI",
+      "weight": 0.95,
+      "subject": "the Saraswati river"
+    },
+    {
+      "topic": "Course and Origin of River Sabarmati",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER SABARMATI",
+      "weight": 1.0,
+      "subject": "the Sabarmati river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Sabarmati",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF SABARMATI",
+      "weight": 0.92,
+      "subject": "the Sabarmati river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Sabarmati",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF SABARMATI",
+      "weight": 0.95,
+      "subject": "the Sabarmati river"
+    },
+    {
+      "topic": "Course and Origin of River Mahi",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER MAHI",
+      "weight": 1.0,
+      "subject": "the Mahi river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Mahi",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF MAHI",
+      "weight": 0.92,
+      "subject": "the Mahi river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Mahi",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF MAHI",
+      "weight": 0.95,
+      "subject": "the Mahi river"
+    },
+    {
+      "topic": "Course and Origin of River Luni",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER LUNI",
+      "weight": 1.0,
+      "subject": "the Luni river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Luni",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF LUNI",
+      "weight": 0.92,
+      "subject": "the Luni river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Luni",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF LUNI",
+      "weight": 0.95,
+      "subject": "the Luni river"
+    },
+    {
+      "topic": "Course and Origin of River Subarnarekha",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER SUBARNAREKHA",
+      "weight": 1.0,
+      "subject": "the Subarnarekha river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Subarnarekha",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF SUBARNAREKHA",
+      "weight": 0.92,
+      "subject": "the Subarnarekha river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Subarnarekha",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF SUBARNAREKHA",
+      "weight": 0.95,
+      "subject": "the Subarnarekha river"
+    },
+    {
+      "topic": "Course and Origin of River Baitarani",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER BAITARANI",
+      "weight": 1.0,
+      "subject": "the Baitarani river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Baitarani",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF BAITARANI",
+      "weight": 0.92,
+      "subject": "the Baitarani river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Baitarani",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF BAITARANI",
+      "weight": 0.95,
+      "subject": "the Baitarani river"
+    },
+    {
+      "topic": "Course and Origin of River Brahmani",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER BRAHMANI",
+      "weight": 1.0,
+      "subject": "the Brahmani river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Brahmani",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF BRAHMANI",
+      "weight": 0.92,
+      "subject": "the Brahmani river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Brahmani",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF BRAHMANI",
+      "weight": 0.95,
+      "subject": "the Brahmani river"
+    },
+    {
+      "topic": "Course and Origin of River Pennar",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER PENNAR",
+      "weight": 1.0,
+      "subject": "the Pennar river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Pennar",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF PENNAR",
+      "weight": 0.92,
+      "subject": "the Pennar river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Pennar",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF PENNAR",
+      "weight": 0.95,
+      "subject": "the Pennar river"
+    },
+    {
+      "topic": "Course and Origin of River Periyar",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER PERIYAR",
+      "weight": 1.0,
+      "subject": "the Periyar river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Periyar",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF PERIYAR",
+      "weight": 0.92,
+      "subject": "the Periyar river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Periyar",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF PERIYAR",
+      "weight": 0.95,
+      "subject": "the Periyar river"
+    },
+    {
+      "topic": "Course and Origin of River Vaidai",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER VAIDAI",
+      "weight": 1.0,
+      "subject": "the Vaidai river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Vaidai",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF VAIDAI",
+      "weight": 0.92,
+      "subject": "the Vaidai river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Vaidai",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF VAIDAI",
+      "weight": 0.95,
+      "subject": "the Vaidai river"
+    },
+    {
+      "topic": "Course and Origin of River Sharavathi",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER SHARAVATHI",
+      "weight": 1.0,
+      "subject": "the Sharavathi river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Sharavathi",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF SHARAVATHI",
+      "weight": 0.92,
+      "subject": "the Sharavathi river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Sharavathi",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF SHARAVATHI",
+      "weight": 0.95,
+      "subject": "the Sharavathi river"
+    },
+    {
+      "topic": "Course and Origin of River Mandovi",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER MANDOVI",
+      "weight": 1.0,
+      "subject": "the Mandovi river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Mandovi",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF MANDOVI",
+      "weight": 0.92,
+      "subject": "the Mandovi river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Mandovi",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF MANDOVI",
+      "weight": 0.95,
+      "subject": "the Mandovi river"
+    },
+    {
+      "topic": "Course and Origin of River Zuari",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER ZUARI",
+      "weight": 1.0,
+      "subject": "the Zuari river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Zuari",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF ZUARI",
+      "weight": 0.92,
+      "subject": "the Zuari river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Zuari",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF ZUARI",
+      "weight": 0.95,
+      "subject": "the Zuari river"
+    },
+    {
+      "topic": "Course and Origin of River Tapti",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER TAPTI",
+      "weight": 1.0,
+      "subject": "the Tapti river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Tapti",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF TAPTI",
+      "weight": 0.92,
+      "subject": "the Tapti river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Tapti",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF TAPTI",
+      "weight": 0.95,
+      "subject": "the Tapti river"
+    },
+    {
+      "topic": "Course and Origin of River Damodar",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER DAMODAR",
+      "weight": 1.0,
+      "subject": "the Damodar river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Damodar",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF DAMODAR",
+      "weight": 0.92,
+      "subject": "the Damodar river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Damodar",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF DAMODAR",
+      "weight": 0.95,
+      "subject": "the Damodar river"
+    },
+    {
+      "topic": "Course and Origin of River Kosi",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER KOSI",
+      "weight": 1.0,
+      "subject": "the Kosi river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Kosi",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF KOSI",
+      "weight": 0.92,
+      "subject": "the Kosi river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Kosi",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF KOSI",
+      "weight": 0.95,
+      "subject": "the Kosi river"
+    },
+    {
+      "topic": "Course and Origin of River Gandak",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER GANDAK",
+      "weight": 1.0,
+      "subject": "the Gandak river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Gandak",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF GANDAK",
+      "weight": 0.92,
+      "subject": "the Gandak river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Gandak",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF GANDAK",
+      "weight": 0.95,
+      "subject": "the Gandak river"
+    },
+    {
+      "topic": "Course and Origin of River Ghaghara",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER GHAGHARA",
+      "weight": 1.0,
+      "subject": "the Ghaghara river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Ghaghara",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF GHAGHARA",
+      "weight": 0.92,
+      "subject": "the Ghaghara river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Ghaghara",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF GHAGHARA",
+      "weight": 0.95,
+      "subject": "the Ghaghara river"
+    },
+    {
+      "topic": "Course and Origin of River Chambal",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER CHAMBAL",
+      "weight": 1.0,
+      "subject": "the Chambal river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Chambal",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF CHAMBAL",
+      "weight": 0.92,
+      "subject": "the Chambal river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Chambal",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF CHAMBAL",
+      "weight": 0.95,
+      "subject": "the Chambal river"
+    },
+    {
+      "topic": "Course and Origin of River Betwa",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER BETWA",
+      "weight": 1.0,
+      "subject": "the Betwa river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Betwa",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF BETWA",
+      "weight": 0.92,
+      "subject": "the Betwa river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Betwa",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF BETWA",
+      "weight": 0.95,
+      "subject": "the Betwa river"
+    },
+    {
+      "topic": "Course and Origin of River Ken",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER KEN",
+      "weight": 1.0,
+      "subject": "the Ken river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Ken",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF KEN",
+      "weight": 0.92,
+      "subject": "the Ken river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Ken",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF KEN",
+      "weight": 0.95,
+      "subject": "the Ken river"
+    },
+    {
+      "topic": "Course and Origin of River Son",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER SON",
+      "weight": 1.0,
+      "subject": "the Son river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Son",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF SON",
+      "weight": 0.92,
+      "subject": "the Son river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Son",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF SON",
+      "weight": 0.95,
+      "subject": "the Son river"
+    },
+    {
+      "topic": "Course and Origin of River Tons",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER TONS",
+      "weight": 1.0,
+      "subject": "the Tons river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Tons",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF TONS",
+      "weight": 0.92,
+      "subject": "the Tons river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Tons",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF TONS",
+      "weight": 0.95,
+      "subject": "the Tons river"
+    },
+    {
+      "topic": "Course and Origin of River Hooghly",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER HOOGHLY",
+      "weight": 1.0,
+      "subject": "the Hooghly river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Hooghly",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF HOOGHLY",
+      "weight": 0.92,
+      "subject": "the Hooghly river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Hooghly",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF HOOGHLY",
+      "weight": 0.95,
+      "subject": "the Hooghly river"
+    },
+    {
+      "topic": "Course and Origin of River Teesta",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER TEESTA",
+      "weight": 1.0,
+      "subject": "the Teesta river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Teesta",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF TEESTA",
+      "weight": 0.92,
+      "subject": "the Teesta river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Teesta",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF TEESTA",
+      "weight": 0.95,
+      "subject": "the Teesta river"
+    },
+    {
+      "topic": "Course and Origin of River Barak",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER BARAK",
+      "weight": 1.0,
+      "subject": "the Barak river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Barak",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF BARAK",
+      "weight": 0.92,
+      "subject": "the Barak river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Barak",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF BARAK",
+      "weight": 0.95,
+      "subject": "the Barak river"
+    },
+    {
+      "topic": "Course and Origin of River Manas",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER MANAS",
+      "weight": 1.0,
+      "subject": "the Manas river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Manas",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF MANAS",
+      "weight": 0.92,
+      "subject": "the Manas river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Manas",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF MANAS",
+      "weight": 0.95,
+      "subject": "the Manas river"
+    },
+    {
+      "topic": "Course and Origin of River Sankosh",
+      "series": "Sacred Rivers",
+      "title_en": "RIVER SANKOSH",
+      "weight": 1.0,
+      "subject": "the Sankosh river"
+    },
+    {
+      "topic": "Dams and Tributaries of River Sankosh",
+      "series": "Sacred Rivers",
+      "title_en": "DAMS OF SANKOSH",
+      "weight": 0.92,
+      "subject": "the Sankosh river"
+    },
+    {
+      "topic": "Mythology and Sacred Ghats of Sankosh",
+      "series": "Sacred Rivers",
+      "title_en": "GHATS OF SANKOSH",
+      "weight": 0.95,
+      "subject": "the Sankosh river"
+    },
+    {
+      "topic": "Secrets of National Anthem in India",
+      "series": "Symbols & Civics",
+      "title_en": "NATIONAL ANTHEM",
+      "weight": 0.888,
+      "subject": "National Anthem in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: National Anthem",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS NATIONAL ANT",
+      "weight": 0.8,
+      "subject": "National Anthem in India"
+    },
+    {
+      "topic": "Map Overview of National Anthem",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF NATIONAL ANT",
+      "weight": 0.755,
+      "subject": "National Anthem in India"
+    },
+    {
+      "topic": "Secrets of National Flag Code in India",
+      "series": "Symbols & Civics",
+      "title_en": "NATIONAL FLAG CO",
+      "weight": 0.888,
+      "subject": "National Flag Code in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: National Flag Code",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS NATIONAL FLA",
+      "weight": 0.8,
+      "subject": "National Flag Code in India"
+    },
+    {
+      "topic": "Map Overview of National Flag Code",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF NATIONAL FLA",
+      "weight": 0.755,
+      "subject": "National Flag Code in India"
+    },
+    {
+      "topic": "Secrets of Zonal Councils in India",
+      "series": "Symbols & Civics",
+      "title_en": "ZONAL COUNCILS",
+      "weight": 0.888,
+      "subject": "Zonal Councils in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Zonal Councils",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS ZONAL COUNCI",
+      "weight": 0.8,
+      "subject": "Zonal Councils in India"
+    },
+    {
+      "topic": "Map Overview of Zonal Councils",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF ZONAL COUNCI",
+      "weight": 0.755,
+      "subject": "Zonal Councils in India"
+    },
+    {
+      "topic": "Secrets of Panchayati Raj System in India",
+      "series": "Symbols & Civics",
+      "title_en": "PANCHAYATI RAJ S",
+      "weight": 0.888,
+      "subject": "Panchayati Raj System in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Panchayati Raj System",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS PANCHAYATI R",
+      "weight": 0.8,
+      "subject": "Panchayati Raj System in India"
+    },
+    {
+      "topic": "Map Overview of Panchayati Raj System",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF PANCHAYATI R",
+      "weight": 0.755,
+      "subject": "Panchayati Raj System in India"
+    },
+    {
+      "topic": "Secrets of India Post Network in India",
+      "series": "Symbols & Civics",
+      "title_en": "INDIA POST NETWO",
+      "weight": 0.888,
+      "subject": "India Post Network in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: India Post Network",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS INDIA POST N",
+      "weight": 0.8,
+      "subject": "India Post Network in India"
+    },
+    {
+      "topic": "Map Overview of India Post Network",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF INDIA POST N",
+      "weight": 0.755,
+      "subject": "India Post Network in India"
+    },
+    {
+      "topic": "Secrets of Census Demographics in India",
+      "series": "Symbols & Civics",
+      "title_en": "CENSUS DEMOGRAPH",
+      "weight": 0.888,
+      "subject": "Census Demographics in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Census Demographics",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS CENSUS DEMOG",
+      "weight": 0.8,
+      "subject": "Census Demographics in India"
+    },
+    {
+      "topic": "Map Overview of Census Demographics",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF CENSUS DEMOG",
+      "weight": 0.755,
+      "subject": "Census Demographics in India"
+    },
+    {
+      "topic": "Secrets of Pin Code System in India",
+      "series": "Symbols & Civics",
+      "title_en": "PIN CODE SYSTEM",
+      "weight": 0.888,
+      "subject": "Pin Code System in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Pin Code System",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS PIN CODE SYS",
+      "weight": 0.8,
+      "subject": "Pin Code System in India"
+    },
+    {
+      "topic": "Map Overview of Pin Code System",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF PIN CODE SYS",
+      "weight": 0.755,
+      "subject": "Pin Code System in India"
+    },
+    {
+      "topic": "Secrets of Railway Zones in India",
+      "series": "Symbols & Civics",
+      "title_en": "RAILWAY ZONES",
+      "weight": 0.888,
+      "subject": "Railway Zones in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Railway Zones",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS RAILWAY ZONE",
+      "weight": 0.8,
+      "subject": "Railway Zones in India"
+    },
+    {
+      "topic": "Map Overview of Railway Zones",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF RAILWAY ZONE",
+      "weight": 0.755,
+      "subject": "Railway Zones in India"
+    },
+    {
+      "topic": "Secrets of Major Sea Ports in India",
+      "series": "Symbols & Civics",
+      "title_en": "MAJOR SEA PORTS",
+      "weight": 0.888,
+      "subject": "Major Sea Ports in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Major Sea Ports",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS MAJOR SEA PO",
+      "weight": 0.8,
+      "subject": "Major Sea Ports in India"
+    },
+    {
+      "topic": "Map Overview of Major Sea Ports",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF MAJOR SEA PO",
+      "weight": 0.755,
+      "subject": "Major Sea Ports in India"
+    },
+    {
+      "topic": "Secrets of National Highways in India",
+      "series": "Symbols & Civics",
+      "title_en": "NATIONAL HIGHWAY",
+      "weight": 0.888,
+      "subject": "National Highways in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: National Highways",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS NATIONAL HIG",
+      "weight": 0.8,
+      "subject": "National Highways in India"
+    },
+    {
+      "topic": "Map Overview of National Highways",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF NATIONAL HIG",
+      "weight": 0.755,
+      "subject": "National Highways in India"
+    },
+    {
+      "topic": "Secrets of UNESCO Heritage Sites in India",
+      "series": "Symbols & Civics",
+      "title_en": "UNESCO HERITAGE ",
+      "weight": 0.888,
+      "subject": "UNESCO Heritage Sites in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: UNESCO Heritage Sites",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS UNESCO HERIT",
+      "weight": 0.8,
+      "subject": "UNESCO Heritage Sites in India"
+    },
+    {
+      "topic": "Map Overview of UNESCO Heritage Sites",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF UNESCO HERIT",
+      "weight": 0.755,
+      "subject": "UNESCO Heritage Sites in India"
+    },
+    {
+      "topic": "Secrets of Biosphere Reserves in India",
+      "series": "Symbols & Civics",
+      "title_en": "BIOSPHERE RESERV",
+      "weight": 0.888,
+      "subject": "Biosphere Reserves in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Biosphere Reserves",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS BIOSPHERE RE",
+      "weight": 0.8,
+      "subject": "Biosphere Reserves in India"
+    },
+    {
+      "topic": "Map Overview of Biosphere Reserves",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF BIOSPHERE RE",
+      "weight": 0.755,
+      "subject": "Biosphere Reserves in India"
+    },
+    {
+      "topic": "Secrets of Ramsar Wetland Sites in India",
+      "series": "Symbols & Civics",
+      "title_en": "RAMSAR WETLAND S",
+      "weight": 0.888,
+      "subject": "Ramsar Wetland Sites in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Ramsar Wetland Sites",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS RAMSAR WETLA",
+      "weight": 0.8,
+      "subject": "Ramsar Wetland Sites in India"
+    },
+    {
+      "topic": "Map Overview of Ramsar Wetland Sites",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF RAMSAR WETLA",
+      "weight": 0.755,
+      "subject": "Ramsar Wetland Sites in India"
+    },
+    {
+      "topic": "Secrets of Tiger Reserves in India",
+      "series": "Symbols & Civics",
+      "title_en": "TIGER RESERVES",
+      "weight": 0.888,
+      "subject": "Tiger Reserves in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Tiger Reserves",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS TIGER RESERV",
+      "weight": 0.8,
+      "subject": "Tiger Reserves in India"
+    },
+    {
+      "topic": "Map Overview of Tiger Reserves",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF TIGER RESERV",
+      "weight": 0.755,
+      "subject": "Tiger Reserves in India"
+    },
+    {
+      "topic": "Secrets of Elephant Corridors in India",
+      "series": "Symbols & Civics",
+      "title_en": "ELEPHANT CORRIDO",
+      "weight": 0.888,
+      "subject": "Elephant Corridors in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Elephant Corridors",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS ELEPHANT COR",
+      "weight": 0.8,
+      "subject": "Elephant Corridors in India"
+    },
+    {
+      "topic": "Map Overview of Elephant Corridors",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF ELEPHANT COR",
+      "weight": 0.755,
+      "subject": "Elephant Corridors in India"
+    },
+    {
+      "topic": "Secrets of National Parks in India",
+      "series": "Symbols & Civics",
+      "title_en": "NATIONAL PARKS",
+      "weight": 0.888,
+      "subject": "National Parks in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: National Parks",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS NATIONAL PAR",
+      "weight": 0.8,
+      "subject": "National Parks in India"
+    },
+    {
+      "topic": "Map Overview of National Parks",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF NATIONAL PAR",
+      "weight": 0.755,
+      "subject": "National Parks in India"
+    },
+    {
+      "topic": "Secrets of State Birds in India",
+      "series": "Symbols & Civics",
+      "title_en": "STATE BIRDS",
+      "weight": 0.888,
+      "subject": "State Birds in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: State Birds",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS STATE BIRDS",
+      "weight": 0.8,
+      "subject": "State Birds in India"
+    },
+    {
+      "topic": "Map Overview of State Birds",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF STATE BIRDS",
+      "weight": 0.755,
+      "subject": "State Birds in India"
+    },
+    {
+      "topic": "Secrets of State Flowers in India",
+      "series": "Symbols & Civics",
+      "title_en": "STATE FLOWERS",
+      "weight": 0.888,
+      "subject": "State Flowers in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: State Flowers",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS STATE FLOWER",
+      "weight": 0.8,
+      "subject": "State Flowers in India"
+    },
+    {
+      "topic": "Map Overview of State Flowers",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF STATE FLOWER",
+      "weight": 0.755,
+      "subject": "State Flowers in India"
+    },
+    {
+      "topic": "Secrets of State Trees in India",
+      "series": "Symbols & Civics",
+      "title_en": "STATE TREES",
+      "weight": 0.888,
+      "subject": "State Trees in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: State Trees",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS STATE TREES",
+      "weight": 0.8,
+      "subject": "State Trees in India"
+    },
+    {
+      "topic": "Map Overview of State Trees",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF STATE TREES",
+      "weight": 0.755,
+      "subject": "State Trees in India"
+    },
+    {
+      "topic": "Secrets of State Emblems in India",
+      "series": "Symbols & Civics",
+      "title_en": "STATE EMBLEMS",
+      "weight": 0.888,
+      "subject": "State Emblems in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: State Emblems",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS STATE EMBLEM",
+      "weight": 0.8,
+      "subject": "State Emblems in India"
+    },
+    {
+      "topic": "Map Overview of State Emblems",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF STATE EMBLEM",
+      "weight": 0.755,
+      "subject": "State Emblems in India"
+    },
+    {
+      "topic": "Secrets of State Dances in India",
+      "series": "Symbols & Civics",
+      "title_en": "STATE DANCES",
+      "weight": 0.888,
+      "subject": "State Dances in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: State Dances",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS STATE DANCES",
+      "weight": 0.8,
+      "subject": "State Dances in India"
+    },
+    {
+      "topic": "Map Overview of State Dances",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF STATE DANCES",
+      "weight": 0.755,
+      "subject": "State Dances in India"
+    },
+    {
+      "topic": "Secrets of Major Mountain Passes in India",
+      "series": "Symbols & Civics",
+      "title_en": "MAJOR MOUNTAIN P",
+      "weight": 0.888,
+      "subject": "Major Mountain Passes in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Major Mountain Passes",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS MAJOR MOUNTA",
+      "weight": 0.8,
+      "subject": "Major Mountain Passes in India"
+    },
+    {
+      "topic": "Map Overview of Major Mountain Passes",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF MAJOR MOUNTA",
+      "weight": 0.755,
+      "subject": "Major Mountain Passes in India"
+    },
+    {
+      "topic": "Secrets of Highest Waterfalls in India",
+      "series": "Symbols & Civics",
+      "title_en": "HIGHEST WATERFAL",
+      "weight": 0.888,
+      "subject": "Highest Waterfalls in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Highest Waterfalls",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS HIGHEST WATE",
+      "weight": 0.8,
+      "subject": "Highest Waterfalls in India"
+    },
+    {
+      "topic": "Map Overview of Highest Waterfalls",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF HIGHEST WATE",
+      "weight": 0.755,
+      "subject": "Highest Waterfalls in India"
+    },
+    {
+      "topic": "Secrets of Major River Dams in India",
+      "series": "Symbols & Civics",
+      "title_en": "MAJOR RIVER DAMS",
+      "weight": 0.888,
+      "subject": "Major River Dams in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Major River Dams",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS MAJOR RIVER ",
+      "weight": 0.8,
+      "subject": "Major River Dams in India"
+    },
+    {
+      "topic": "Map Overview of Major River Dams",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF MAJOR RIVER ",
+      "weight": 0.755,
+      "subject": "Major River Dams in India"
+    },
+    {
+      "topic": "Secrets of Glaciers of Himalayas in India",
+      "series": "Symbols & Civics",
+      "title_en": "GLACIERS OF HIMA",
+      "weight": 0.888,
+      "subject": "Glaciers of Himalayas in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Glaciers of Himalayas",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS GLACIERS OF ",
+      "weight": 0.8,
+      "subject": "Glaciers of Himalayas in India"
+    },
+    {
+      "topic": "Map Overview of Glaciers of Himalayas",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF GLACIERS OF ",
+      "weight": 0.755,
+      "subject": "Glaciers of Himalayas in India"
+    },
+    {
+      "topic": "Secrets of Volcanoes of India in India",
+      "series": "Symbols & Civics",
+      "title_en": "VOLCANOES OF IND",
+      "weight": 0.888,
+      "subject": "Volcanoes of India in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Volcanoes of India",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS VOLCANOES OF",
+      "weight": 0.8,
+      "subject": "Volcanoes of India in India"
+    },
+    {
+      "topic": "Map Overview of Volcanoes of India",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF VOLCANOES OF",
+      "weight": 0.755,
+      "subject": "Volcanoes of India in India"
+    },
+    {
+      "topic": "Secrets of Salt Deserts in India",
+      "series": "Symbols & Civics",
+      "title_en": "SALT DESERTS",
+      "weight": 0.888,
+      "subject": "Salt Deserts in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Salt Deserts",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS SALT DESERTS",
+      "weight": 0.8,
+      "subject": "Salt Deserts in India"
+    },
+    {
+      "topic": "Map Overview of Salt Deserts",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF SALT DESERTS",
+      "weight": 0.755,
+      "subject": "Salt Deserts in India"
+    },
+    {
+      "topic": "Secrets of Coral Reefs in India",
+      "series": "Symbols & Civics",
+      "title_en": "CORAL REEFS",
+      "weight": 0.888,
+      "subject": "Coral Reefs in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Coral Reefs",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS CORAL REEFS",
+      "weight": 0.8,
+      "subject": "Coral Reefs in India"
+    },
+    {
+      "topic": "Map Overview of Coral Reefs",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF CORAL REEFS",
+      "weight": 0.755,
+      "subject": "Coral Reefs in India"
+    },
+    {
+      "topic": "Secrets of Coastal Plains in India",
+      "series": "Symbols & Civics",
+      "title_en": "COASTAL PLAINS",
+      "weight": 0.888,
+      "subject": "Coastal Plains in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Coastal Plains",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS COASTAL PLAI",
+      "weight": 0.8,
+      "subject": "Coastal Plains in India"
+    },
+    {
+      "topic": "Map Overview of Coastal Plains",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF COASTAL PLAI",
+      "weight": 0.755,
+      "subject": "Coastal Plains in India"
+    },
+    {
+      "topic": "Secrets of Plateaus of India in India",
+      "series": "Symbols & Civics",
+      "title_en": "PLATEAUS OF INDI",
+      "weight": 0.888,
+      "subject": "Plateaus of India in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Plateaus of India",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS PLATEAUS OF ",
+      "weight": 0.8,
+      "subject": "Plateaus of India in India"
+    },
+    {
+      "topic": "Map Overview of Plateaus of India",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF PLATEAUS OF ",
+      "weight": 0.755,
+      "subject": "Plateaus of India in India"
+    },
+    {
+      "topic": "Secrets of Ancient Universities in India",
+      "series": "Symbols & Civics",
+      "title_en": "ANCIENT UNIVERSI",
+      "weight": 0.888,
+      "subject": "Ancient Universities in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Ancient Universities",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS ANCIENT UNIV",
+      "weight": 0.8,
+      "subject": "Ancient Universities in India"
+    },
+    {
+      "topic": "Map Overview of Ancient Universities",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF ANCIENT UNIV",
+      "weight": 0.755,
+      "subject": "Ancient Universities in India"
+    },
+    {
+      "topic": "Secrets of Forts of India in India",
+      "series": "Symbols & Civics",
+      "title_en": "FORTS OF INDIA",
+      "weight": 0.888,
+      "subject": "Forts of India in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Forts of India",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS FORTS OF IND",
+      "weight": 0.8,
+      "subject": "Forts of India in India"
+    },
+    {
+      "topic": "Map Overview of Forts of India",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF FORTS OF IND",
+      "weight": 0.755,
+      "subject": "Forts of India in India"
+    },
+    {
+      "topic": "Secrets of Rock Cut Caves in India",
+      "series": "Symbols & Civics",
+      "title_en": "ROCK CUT CAVES",
+      "weight": 0.888,
+      "subject": "Rock Cut Caves in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Rock Cut Caves",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS ROCK CUT CAV",
+      "weight": 0.8,
+      "subject": "Rock Cut Caves in India"
+    },
+    {
+      "topic": "Map Overview of Rock Cut Caves",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF ROCK CUT CAV",
+      "weight": 0.755,
+      "subject": "Rock Cut Caves in India"
+    },
+    {
+      "topic": "Secrets of Hill Stations in India",
+      "series": "Symbols & Civics",
+      "title_en": "HILL STATIONS",
+      "weight": 0.888,
+      "subject": "Hill Stations in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Hill Stations",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS HILL STATION",
+      "weight": 0.8,
+      "subject": "Hill Stations in India"
+    },
+    {
+      "topic": "Map Overview of Hill Stations",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF HILL STATION",
+      "weight": 0.755,
+      "subject": "Hill Stations in India"
+    },
+    {
+      "topic": "Secrets of Border Line Names in India",
+      "series": "Symbols & Civics",
+      "title_en": "BORDER LINE NAME",
+      "weight": 0.888,
+      "subject": "Border Line Names in India"
+    },
+    {
+      "topic": "Competitive Exam Facts: Border Line Names",
+      "series": "Symbols & Civics",
+      "title_en": "FACTS BORDER LINE ",
+      "weight": 0.8,
+      "subject": "Border Line Names in India"
+    },
+    {
+      "topic": "Map Overview of Border Line Names",
+      "series": "Symbols & Civics",
+      "title_en": "MAP OF BORDER LINE ",
+      "weight": 0.755,
+      "subject": "Border Line Names in India"
+    },
+    {
+      "topic": "Unseen Geography of Japan",
+      "series": "Global Geography",
+      "title_en": "JAPAN",
+      "weight": 0.562,
+      "subject": "Japan"
+    },
+    {
+      "topic": "Borders and Rivers of Japan",
+      "series": "Global Geography",
+      "title_en": "MAP OF JAPAN",
+      "weight": 0.477,
+      "subject": "Japan"
+    },
+    {
+      "topic": "Wonders and Capital of Japan",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF JAPAN",
+      "weight": 0.494,
+      "subject": "Japan"
+    },
+    {
+      "topic": "Unseen Geography of Greece",
+      "series": "Global Geography",
+      "title_en": "GREECE",
+      "weight": 0.562,
+      "subject": "Greece"
+    },
+    {
+      "topic": "Borders and Rivers of Greece",
+      "series": "Global Geography",
+      "title_en": "MAP OF GREECE",
+      "weight": 0.477,
+      "subject": "Greece"
+    },
+    {
+      "topic": "Wonders and Capital of Greece",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF GREECE",
+      "weight": 0.494,
+      "subject": "Greece"
+    },
+    {
+      "topic": "Unseen Geography of Argentina",
+      "series": "Global Geography",
+      "title_en": "ARGENTINA",
+      "weight": 0.562,
+      "subject": "Argentina"
+    },
+    {
+      "topic": "Borders and Rivers of Argentina",
+      "series": "Global Geography",
+      "title_en": "MAP OF ARGENTINA",
+      "weight": 0.477,
+      "subject": "Argentina"
+    },
+    {
+      "topic": "Wonders and Capital of Argentina",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF ARGENTINA",
+      "weight": 0.494,
+      "subject": "Argentina"
+    },
+    {
+      "topic": "Unseen Geography of Spain",
+      "series": "Global Geography",
+      "title_en": "SPAIN",
+      "weight": 0.562,
+      "subject": "Spain"
+    },
+    {
+      "topic": "Borders and Rivers of Spain",
+      "series": "Global Geography",
+      "title_en": "MAP OF SPAIN",
+      "weight": 0.477,
+      "subject": "Spain"
+    },
+    {
+      "topic": "Wonders and Capital of Spain",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF SPAIN",
+      "weight": 0.494,
+      "subject": "Spain"
+    },
+    {
+      "topic": "Unseen Geography of Germany",
+      "series": "Global Geography",
+      "title_en": "GERMANY",
+      "weight": 0.562,
+      "subject": "Germany"
+    },
+    {
+      "topic": "Borders and Rivers of Germany",
+      "series": "Global Geography",
+      "title_en": "MAP OF GERMANY",
+      "weight": 0.477,
+      "subject": "Germany"
+    },
+    {
+      "topic": "Wonders and Capital of Germany",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF GERMANY",
+      "weight": 0.494,
+      "subject": "Germany"
+    },
+    {
+      "topic": "Unseen Geography of Indonesia",
+      "series": "Global Geography",
+      "title_en": "INDONESIA",
+      "weight": 0.562,
+      "subject": "Indonesia"
+    },
+    {
+      "topic": "Borders and Rivers of Indonesia",
+      "series": "Global Geography",
+      "title_en": "MAP OF INDONESIA",
+      "weight": 0.477,
+      "subject": "Indonesia"
+    },
+    {
+      "topic": "Wonders and Capital of Indonesia",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF INDONESIA",
+      "weight": 0.494,
+      "subject": "Indonesia"
+    },
+    {
+      "topic": "Unseen Geography of Italy",
+      "series": "Global Geography",
+      "title_en": "ITALY",
+      "weight": 0.562,
+      "subject": "Italy"
+    },
+    {
+      "topic": "Borders and Rivers of Italy",
+      "series": "Global Geography",
+      "title_en": "MAP OF ITALY",
+      "weight": 0.477,
+      "subject": "Italy"
+    },
+    {
+      "topic": "Wonders and Capital of Italy",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF ITALY",
+      "weight": 0.494,
+      "subject": "Italy"
+    },
+    {
+      "topic": "Unseen Geography of France",
+      "series": "Global Geography",
+      "title_en": "FRANCE",
+      "weight": 0.562,
+      "subject": "France"
+    },
+    {
+      "topic": "Borders and Rivers of France",
+      "series": "Global Geography",
+      "title_en": "MAP OF FRANCE",
+      "weight": 0.477,
+      "subject": "France"
+    },
+    {
+      "topic": "Wonders and Capital of France",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF FRANCE",
+      "weight": 0.494,
+      "subject": "France"
+    },
+    {
+      "topic": "Unseen Geography of Brazil",
+      "series": "Global Geography",
+      "title_en": "BRAZIL",
+      "weight": 0.562,
+      "subject": "Brazil"
+    },
+    {
+      "topic": "Borders and Rivers of Brazil",
+      "series": "Global Geography",
+      "title_en": "MAP OF BRAZIL",
+      "weight": 0.477,
+      "subject": "Brazil"
+    },
+    {
+      "topic": "Wonders and Capital of Brazil",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF BRAZIL",
+      "weight": 0.494,
+      "subject": "Brazil"
+    },
+    {
+      "topic": "Unseen Geography of Egypt",
+      "series": "Global Geography",
+      "title_en": "EGYPT",
+      "weight": 0.562,
+      "subject": "Egypt"
+    },
+    {
+      "topic": "Borders and Rivers of Egypt",
+      "series": "Global Geography",
+      "title_en": "MAP OF EGYPT",
+      "weight": 0.477,
+      "subject": "Egypt"
+    },
+    {
+      "topic": "Wonders and Capital of Egypt",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF EGYPT",
+      "weight": 0.494,
+      "subject": "Egypt"
+    },
+    {
+      "topic": "Unseen Geography of Canada",
+      "series": "Global Geography",
+      "title_en": "CANADA",
+      "weight": 0.562,
+      "subject": "Canada"
+    },
+    {
+      "topic": "Borders and Rivers of Canada",
+      "series": "Global Geography",
+      "title_en": "MAP OF CANADA",
+      "weight": 0.477,
+      "subject": "Canada"
+    },
+    {
+      "topic": "Wonders and Capital of Canada",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF CANADA",
+      "weight": 0.494,
+      "subject": "Canada"
+    },
+    {
+      "topic": "Unseen Geography of Australia",
+      "series": "Global Geography",
+      "title_en": "AUSTRALIA",
+      "weight": 0.562,
+      "subject": "Australia"
+    },
+    {
+      "topic": "Borders and Rivers of Australia",
+      "series": "Global Geography",
+      "title_en": "MAP OF AUSTRALIA",
+      "weight": 0.477,
+      "subject": "Australia"
+    },
+    {
+      "topic": "Wonders and Capital of Australia",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF AUSTRALIA",
+      "weight": 0.494,
+      "subject": "Australia"
+    },
+    {
+      "topic": "Unseen Geography of South Korea",
+      "series": "Global Geography",
+      "title_en": "SOUTH KOREA",
+      "weight": 0.562,
+      "subject": "South Korea"
+    },
+    {
+      "topic": "Borders and Rivers of South Korea",
+      "series": "Global Geography",
+      "title_en": "MAP OF SOUTH KOREA",
+      "weight": 0.477,
+      "subject": "South Korea"
+    },
+    {
+      "topic": "Wonders and Capital of South Korea",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF SOUTH KORE",
+      "weight": 0.494,
+      "subject": "South Korea"
+    },
+    {
+      "topic": "Unseen Geography of Vietnam",
+      "series": "Global Geography",
+      "title_en": "VIETNAM",
+      "weight": 0.562,
+      "subject": "Vietnam"
+    },
+    {
+      "topic": "Borders and Rivers of Vietnam",
+      "series": "Global Geography",
+      "title_en": "MAP OF VIETNAM",
+      "weight": 0.477,
+      "subject": "Vietnam"
+    },
+    {
+      "topic": "Wonders and Capital of Vietnam",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF VIETNAM",
+      "weight": 0.494,
+      "subject": "Vietnam"
+    },
+    {
+      "topic": "Unseen Geography of Thailand",
+      "series": "Global Geography",
+      "title_en": "THAILAND",
+      "weight": 0.562,
+      "subject": "Thailand"
+    },
+    {
+      "topic": "Borders and Rivers of Thailand",
+      "series": "Global Geography",
+      "title_en": "MAP OF THAILAND",
+      "weight": 0.477,
+      "subject": "Thailand"
+    },
+    {
+      "topic": "Wonders and Capital of Thailand",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF THAILAND",
+      "weight": 0.494,
+      "subject": "Thailand"
+    },
+    {
+      "topic": "Unseen Geography of Mexico",
+      "series": "Global Geography",
+      "title_en": "MEXICO",
+      "weight": 0.562,
+      "subject": "Mexico"
+    },
+    {
+      "topic": "Borders and Rivers of Mexico",
+      "series": "Global Geography",
+      "title_en": "MAP OF MEXICO",
+      "weight": 0.477,
+      "subject": "Mexico"
+    },
+    {
+      "topic": "Wonders and Capital of Mexico",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF MEXICO",
+      "weight": 0.494,
+      "subject": "Mexico"
+    },
+    {
+      "topic": "Unseen Geography of South Africa",
+      "series": "Global Geography",
+      "title_en": "SOUTH AFRICA",
+      "weight": 0.562,
+      "subject": "South Africa"
+    },
+    {
+      "topic": "Borders and Rivers of South Africa",
+      "series": "Global Geography",
+      "title_en": "MAP OF SOUTH AFRICA",
+      "weight": 0.477,
+      "subject": "South Africa"
+    },
+    {
+      "topic": "Wonders and Capital of South Africa",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF SOUTH AFRI",
+      "weight": 0.494,
+      "subject": "South Africa"
+    },
+    {
+      "topic": "Unseen Geography of Russia",
+      "series": "Global Geography",
+      "title_en": "RUSSIA",
+      "weight": 0.562,
+      "subject": "Russia"
+    },
+    {
+      "topic": "Borders and Rivers of Russia",
+      "series": "Global Geography",
+      "title_en": "MAP OF RUSSIA",
+      "weight": 0.477,
+      "subject": "Russia"
+    },
+    {
+      "topic": "Wonders and Capital of Russia",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF RUSSIA",
+      "weight": 0.494,
+      "subject": "Russia"
+    },
+    {
+      "topic": "Unseen Geography of United Kingdom",
+      "series": "Global Geography",
+      "title_en": "UNITED KINGDOM",
+      "weight": 0.562,
+      "subject": "United Kingdom"
+    },
+    {
+      "topic": "Borders and Rivers of United Kingdom",
+      "series": "Global Geography",
+      "title_en": "MAP OF UNITED KINGDOM",
+      "weight": 0.477,
+      "subject": "United Kingdom"
+    },
+    {
+      "topic": "Wonders and Capital of United Kingdom",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF UNITED KIN",
+      "weight": 0.494,
+      "subject": "United Kingdom"
+    },
+    {
+      "topic": "Unseen Geography of Turkey",
+      "series": "Global Geography",
+      "title_en": "TURKEY",
+      "weight": 0.562,
+      "subject": "Turkey"
+    },
+    {
+      "topic": "Borders and Rivers of Turkey",
+      "series": "Global Geography",
+      "title_en": "MAP OF TURKEY",
+      "weight": 0.477,
+      "subject": "Turkey"
+    },
+    {
+      "topic": "Wonders and Capital of Turkey",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF TURKEY",
+      "weight": 0.494,
+      "subject": "Turkey"
+    },
+    {
+      "topic": "Unseen Geography of Iran",
+      "series": "Global Geography",
+      "title_en": "IRAN",
+      "weight": 0.562,
+      "subject": "Iran"
+    },
+    {
+      "topic": "Borders and Rivers of Iran",
+      "series": "Global Geography",
+      "title_en": "MAP OF IRAN",
+      "weight": 0.477,
+      "subject": "Iran"
+    },
+    {
+      "topic": "Wonders and Capital of Iran",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF IRAN",
+      "weight": 0.494,
+      "subject": "Iran"
+    },
+    {
+      "topic": "Unseen Geography of Saudi Arabia",
+      "series": "Global Geography",
+      "title_en": "SAUDI ARABIA",
+      "weight": 0.562,
+      "subject": "Saudi Arabia"
+    },
+    {
+      "topic": "Borders and Rivers of Saudi Arabia",
+      "series": "Global Geography",
+      "title_en": "MAP OF SAUDI ARABIA",
+      "weight": 0.477,
+      "subject": "Saudi Arabia"
+    },
+    {
+      "topic": "Wonders and Capital of Saudi Arabia",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF SAUDI ARAB",
+      "weight": 0.494,
+      "subject": "Saudi Arabia"
+    },
+    {
+      "topic": "Unseen Geography of Norway",
+      "series": "Global Geography",
+      "title_en": "NORWAY",
+      "weight": 0.562,
+      "subject": "Norway"
+    },
+    {
+      "topic": "Borders and Rivers of Norway",
+      "series": "Global Geography",
+      "title_en": "MAP OF NORWAY",
+      "weight": 0.477,
+      "subject": "Norway"
+    },
+    {
+      "topic": "Wonders and Capital of Norway",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF NORWAY",
+      "weight": 0.494,
+      "subject": "Norway"
+    },
+    {
+      "topic": "Unseen Geography of Iceland",
+      "series": "Global Geography",
+      "title_en": "ICELAND",
+      "weight": 0.562,
+      "subject": "Iceland"
+    },
+    {
+      "topic": "Borders and Rivers of Iceland",
+      "series": "Global Geography",
+      "title_en": "MAP OF ICELAND",
+      "weight": 0.477,
+      "subject": "Iceland"
+    },
+    {
+      "topic": "Wonders and Capital of Iceland",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF ICELAND",
+      "weight": 0.494,
+      "subject": "Iceland"
+    },
+    {
+      "topic": "Unseen Geography of Switzerland",
+      "series": "Global Geography",
+      "title_en": "SWITZERLAND",
+      "weight": 0.562,
+      "subject": "Switzerland"
+    },
+    {
+      "topic": "Borders and Rivers of Switzerland",
+      "series": "Global Geography",
+      "title_en": "MAP OF SWITZERLAND",
+      "weight": 0.477,
+      "subject": "Switzerland"
+    },
+    {
+      "topic": "Wonders and Capital of Switzerland",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF SWITZERLAN",
+      "weight": 0.494,
+      "subject": "Switzerland"
+    },
+    {
+      "topic": "Unseen Geography of Netherlands",
+      "series": "Global Geography",
+      "title_en": "NETHERLANDS",
+      "weight": 0.562,
+      "subject": "Netherlands"
+    },
+    {
+      "topic": "Borders and Rivers of Netherlands",
+      "series": "Global Geography",
+      "title_en": "MAP OF NETHERLANDS",
+      "weight": 0.477,
+      "subject": "Netherlands"
+    },
+    {
+      "topic": "Wonders and Capital of Netherlands",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF NETHERLAND",
+      "weight": 0.494,
+      "subject": "Netherlands"
+    },
+    {
+      "topic": "Unseen Geography of Peru",
+      "series": "Global Geography",
+      "title_en": "PERU",
+      "weight": 0.562,
+      "subject": "Peru"
+    },
+    {
+      "topic": "Borders and Rivers of Peru",
+      "series": "Global Geography",
+      "title_en": "MAP OF PERU",
+      "weight": 0.477,
+      "subject": "Peru"
+    },
+    {
+      "topic": "Wonders and Capital of Peru",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF PERU",
+      "weight": 0.494,
+      "subject": "Peru"
+    },
+    {
+      "topic": "Unseen Geography of Chile",
+      "series": "Global Geography",
+      "title_en": "CHILE",
+      "weight": 0.562,
+      "subject": "Chile"
+    },
+    {
+      "topic": "Borders and Rivers of Chile",
+      "series": "Global Geography",
+      "title_en": "MAP OF CHILE",
+      "weight": 0.477,
+      "subject": "Chile"
+    },
+    {
+      "topic": "Wonders and Capital of Chile",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF CHILE",
+      "weight": 0.494,
+      "subject": "Chile"
+    },
+    {
+      "topic": "Unseen Geography of New Zealand",
+      "series": "Global Geography",
+      "title_en": "NEW ZEALAND",
+      "weight": 0.562,
+      "subject": "New Zealand"
+    },
+    {
+      "topic": "Borders and Rivers of New Zealand",
+      "series": "Global Geography",
+      "title_en": "MAP OF NEW ZEALAND",
+      "weight": 0.477,
+      "subject": "New Zealand"
+    },
+    {
+      "topic": "Wonders and Capital of New Zealand",
+      "series": "Global Geography",
+      "title_en": "WONDERS OF NEW ZEALAN",
+      "weight": 0.494,
+      "subject": "New Zealand"
+    }
+  ],
+  "total_backlog_count": 558
+}

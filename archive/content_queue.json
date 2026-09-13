@@ -1,0 +1,76 @@
+{
+  "topics": [
+    {
+      "id": "river_godavari",
+      "category": "Sacred Rivers",
+      "title": "Godavari: The Dakshina Ganga",
+      "cover_text": "GODAVARI",
+      "regional_script": "गोदावरी",
+      "keywords": ["Godavari", "Trimbakeshwar", "Nashik", "Bay of Bengal", "Rajamahendravaram"],
+      "status": "pending"
+    },
+    {
+      "id": "temples_andhra",
+      "category": "Architectural Heritage",
+      "title": "Temples of Andhra Pradesh",
+      "cover_text": "TEMPLES OF ANDHRA",
+      "regional_script": "ఆంధ్రప్రదేశ్",
+      "keywords": ["Tirupati", "Tirumala", "Lepakshi", "Srisailam", "Simhachalam"],
+      "status": "pending"
+    },
+    {
+      "id": "river_kaveri",
+      "category": "Sacred Rivers",
+      "title": "Kaveri: The Lifeline of the South",
+      "cover_text": "KAVERI",
+      "regional_script": "காவேரி",
+      "keywords": ["Talakaveri", "Kodagu", "Srirangapatna", "Mettur Dam", "Thanjavur"],
+      "status": "pending"
+    },
+    {
+      "id": "state_uttar_pradesh",
+      "category": "State Profiles",
+      "title": "Uttar Pradesh: Heart of India",
+      "cover_text": "UTTAR PRADESH",
+      "regional_script": "उत्तर प्रदेश",
+      "keywords": ["Varanasi", "Ganga", "Ayodhya", "Agra", "Triveni Sangam"],
+      "status": "pending"
+    },
+    {
+      "id": "national_symbols",
+      "category": "Symbols & Civics",
+      "title": "Secrets of India's National Symbols",
+      "cover_text": "NATIONAL SYMBOLS",
+      "regional_script": "NATIONAL SYMBOLS",
+      "keywords": ["Bengal Tiger", "Peacock", "Lotus", "Banyan Tree", "Ashoka Capital"],
+      "status": "pending"
+    },
+    {
+      "id": "country_japan",
+      "category": "Global Geography",
+      "title": "Japan: Land of the Rising Sun",
+      "cover_text": "JAPAN",
+      "regional_script": "JAPAN",
+      "keywords": ["Mount Fuji", "Tokyo", "Shinkansen", "Honshu", "Pacific Ring of Fire"],
+      "status": "pending"
+    },
+    {
+      "id": "river_mahanadi",
+      "category": "Sacred Rivers",
+      "title": "Mahanadi: The Great River of Odisha",
+      "cover_text": "MAHANADI",
+      "regional_script": "महानदी",
+      "keywords": ["Hirakud Dam", "Sihawa", "Cuttack", "Sambalpur", "Bay of Bengal"],
+      "status": "pending"
+    },
+    {
+      "id": "temples_maharashtra",
+      "category": "Architectural Heritage",
+      "title": "Temples of Maharashtra",
+      "cover_text": "TEMPLES OF MAHARASHTRA",
+      "regional_script": "महाराष्ट्र",
+      "keywords": ["Kailasa Temple Ellora", "Shirdi", "Ashtavinayak", "Bhimashankar", "Trimbakeshwar"],
+      "status": "pending"
+    }
+  ]
+}

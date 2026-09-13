@@ -1,0 +1,9 @@
+google-genai
+pillow
+requests
+python-dotenv
+# Publishing
+google-api-python-client
+google-auth-oauthlib
+# Legacy fallback TTS (Kokoro is the primary path via free-tts/narrate.py)
+edge-tts
