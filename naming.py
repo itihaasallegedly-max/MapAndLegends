@@ -30,7 +30,14 @@ KINDS = {
     "ass": ".ass",
     "reel": "_reel.mp4",
     "publish": "_publish.json",
+    "topic_spec": "_topic_spec.json",   # the draw, kept for the render phase
+    "art_source": "_art_source.json",   # where the cover art actually came from
 }
+
+# One still per scene. The renderer derives several shots from each, so a
+# handful of images still cuts every few seconds.
+for _i in range(1, 9):
+    KINDS[f"scene{_i}"] = f"_scene{_i}.jpg"
 
 
 def path(output_dir, slug, kind):

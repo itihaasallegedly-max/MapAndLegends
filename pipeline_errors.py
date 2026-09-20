@@ -32,3 +32,12 @@ class PublishError(PipelineError):
 
 class ConfigError(PipelineError):
     """Misconfiguration that would otherwise degrade silently."""
+
+
+class QuotaExhaustedError(PipelineError):
+    """The model account is out of credit or quota.
+
+    Deliberately NOT a ScriptGenerationError: that one means "this topic did
+    not work, try another", and trying another is precisely the wrong move
+    here. A run that sees this stops immediately with the backlog intact.
+    """
