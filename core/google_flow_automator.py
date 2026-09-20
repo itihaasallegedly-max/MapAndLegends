@@ -204,11 +204,13 @@ def automate_google_flow(json_path):
             try:
                 # 1. Click the main Add clip button
                 clicked_add = False
-                add_btn = page.locator("button[mattooltip='Add clip'], button:has(mat-icon:has-text('add_2')), [aria-label='Add clip']").first
-                if add_btn.count() > 0:
+                add_btn = page.locator("[aria-label='Add clip']").first
+                try:
+                    add_btn.wait_for(state="attached", timeout=5000)
                     add_btn.evaluate("el => el.click()")
-                    page.wait_for_timeout(1000)
                     clicked_add = True
+                except Exception:
+                    pass
                 
                 if not clicked_add:
                     print(f"Could not find Add clip button on timeline for scene {i+1}!")
@@ -216,10 +218,10 @@ def automate_google_flow(json_path):
                 
                 # 2. Click the 'Add clip' item inside the dropdown menu
                 menu_item = page.locator("[role='menuitem']:has-text('Add clip')").first
-                if menu_item.count() > 0:
+                try:
+                    menu_item.wait_for(state="attached", timeout=5000)
                     menu_item.evaluate("el => el.click()")
-                    page.wait_for_timeout(2000)
-                else:
+                except Exception:
                     print("Warning: Add clip menu item not found after clicking button.")
                 
                 # 3. Select asset from the dialog panel
@@ -231,7 +233,7 @@ def automate_google_flow(json_path):
                 # 4. Click Add media
                 add_media_btn = page.locator("button:has-text('Add media')").first
                 try:
-                    add_media_btn.wait_for(state="visible", timeout=5000)
+                    add_media_btn.wait_for(state="attached", timeout=5000)
                     add_media_btn.evaluate("el => el.click()")
                 except:
                     print("Could not find 'Add media' button, hitting Enter...")
