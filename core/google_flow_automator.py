@@ -83,7 +83,7 @@ def automate_google_flow(json_path):
         try:
             settings_btn = page.locator("button[aria-label='Settings trigger']").first
             settings_btn.click(timeout=5000)
-            page.locator("text=Generating will use").first.wait_for(state="visible", timeout=5000)
+            page.wait_for_timeout(1000)
             
             try: page.get_by_text("Video", exact=True).first.click(timeout=1000)
             except: pass
@@ -110,7 +110,13 @@ def automate_google_flow(json_path):
             if narration_text:
                 prompt_text = f"{prompt_text} Voiceover: {narration_text}"
                 
-            required_duration = float(segment.get("seconds", 8))
+            requested_seconds = float(segment.get("seconds", 8))
+            # Estimate audio duration: ~2.3 words per second (conservative ~138 WPM)
+            word_count = len(narration_text.split())
+            estimated_audio_seconds = word_count / 2.3 if word_count > 0 else 0
+            
+            # Ensure the video is long enough to fit the narration
+            required_duration = max(requested_seconds, estimated_audio_seconds)
             
             # Map required duration to Flow options
             if required_duration <= 4:
@@ -129,7 +135,7 @@ def automate_google_flow(json_path):
             try:
                 settings_btn = page.locator("button[aria-label='Settings trigger']").first
                 settings_btn.click(timeout=5000)
-                page.locator("text=Generating will use").first.wait_for(state="visible", timeout=5000)
+                page.wait_for_timeout(1000)
                 
                 print(f"Selecting duration: {duration_option}")
                 page.get_by_text(duration_option, exact=True).first.click(timeout=1000)
@@ -184,9 +190,9 @@ def automate_google_flow(json_path):
         print("\nAll scenes generated! Now stitching them together onto the timeline...")
         
         # --- Final Assembly ---
-        print("Clicking the first video tile to enter Editor view...")
+        print("Clicking the first scene's video tile to enter Editor view...")
         try:
-            tile = page.locator("flow-video-tile").first
+            tile = page.locator("flow-video-tile").nth(len(segments) - 1)
             tile.wait_for(state="visible", timeout=10000)
             tile.evaluate("el => el.click()")
             page.wait_for_url("**/edit/**", timeout=15000)
@@ -197,7 +203,7 @@ def automate_google_flow(json_path):
         
         # In Flow, the timeline usually keeps the very first clip you generated.
         # We need to add the other clips from the media library.
-        for i in range(num_scenes):
+        for i in range(1, num_scenes):
             scene_index = (num_scenes - 1) - i
             print(f"Adding Scene {i+1} to timeline (Asset index {scene_index})...")
             
@@ -217,7 +223,7 @@ def automate_google_flow(json_path):
                     continue
                 
                 # 2. Click the 'Add clip' item inside the dropdown menu
-                menu_item = page.locator("[role='menuitem']:has-text('Add clip')").first
+                menu_item = page.locator("span.item-text:has-text('Add clip')").first
                 try:
                     menu_item.wait_for(state="attached", timeout=5000)
                     menu_item.evaluate("el => el.click()")
@@ -246,8 +252,8 @@ def automate_google_flow(json_path):
                 print(f"Error adding Scene {i+1}: {e}")
                 
         print("\nAssembly complete! All clips have been added to the master timeline in your current project.")
-        if 'context' in locals():
-            context.close()
+        if 'browser' in locals():
+            browser.disconnect()
             time.sleep(3)
 
 if __name__ == "__main__":
