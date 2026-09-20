@@ -28,6 +28,7 @@ from pipeline_errors import (
     ScriptGenerationError,
 )
 from stage2_daily_draw import draw_daily_topic, record_topic_used
+import core.sync_references as sync_references
 from stage2_prompt2_script import generate_script_prompt2
 
 import naming
@@ -166,6 +167,13 @@ def run_script_generation(force_topic=None, max_attempts=5):
 
     for attempt in range(1, max_attempts + 1):
         print(f"\n--- attempt {attempt}/{max_attempts} ---")
+        
+        # 0. Automatically fetch new URLs from competitors
+        try:
+            sync_references.fetch_latest_competitor_shorts()
+        except Exception as e:
+            print(f"[Warning] Failed to fetch latest competitor shorts: {e}")
+            
         topic_spec = None
         try:
             # 1. topic
