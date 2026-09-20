@@ -1,4 +1,4 @@
-google-genai
+openai
 pillow
 requests
 python-dotenv
@@ -7,4 +7,7 @@ yt-dlp
 google-api-python-client
 google-auth-oauthlib
 # Legacy fallback TTS (Kokoro is the primary path via free-tts/narrate.py)
+edge-tts
+requests
+yt-dlp
 edge-tts

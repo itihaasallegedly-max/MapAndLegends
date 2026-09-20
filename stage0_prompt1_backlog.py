@@ -4,6 +4,7 @@ import os
 
 from dotenv import load_dotenv
 
+from stage0_collections import build_collection_topics
 from stage0_seed import load_seed_posts
 
 load_dotenv()
@@ -44,6 +45,38 @@ CIVIC_TOPICS = [
     "Ancient Universities", "Forts of India", "Rock Cut Caves", "Hill Stations", "Border Line Names"
 ]
 
+# --- shape, not theme -------------------------------------------------------
+#
+# The series buckets below sort posts by SUBJECT (rivers, temples, states).
+# The teardown found that what actually predicts views is SHAPE: a collection
+# ("every state's fish", "the temples of Kerala") against a single subject
+# ("the Tapi", "the Ahom kingdom"). The gap it measured was an order of
+# magnitude, which is larger than any gap between the themes. So the seed is
+# classified on both axes, and the second one sets the Collections weight.
+SET_MARKERS = (
+    "state animal", "state bird", "state tree", "state flower", "state fish",
+    "state dance", "state capital", "state emblem", "state symbol",
+    "symbols", "temples", "shrines", "forts", "rivers", "mountains", "peaks",
+    "waterfalls", "dams", "councils", "districts", "dances", "islands",
+    "parks", "reserves", "capitals", "languages", "festivals", "currencies",
+    "every ", "all the ", "of india", "of indian",
+)
+
+
+def is_set_shaped(post):
+    """Does this post walk a list, or dwell on one subject?"""
+    blob = f"{post.get('title', '')} {post.get('caption', '')}".lower()
+    return any(marker in blob for marker in SET_MARKERS)
+
+
+def _median(values, default=0.0):
+    if not values:
+        return default
+    ordered = sorted(values)
+    n = len(ordered)
+    return ordered[n // 2] if n % 2 else (ordered[n // 2 - 1] + ordered[n // 2]) / 2
+
+
 def generate_backlog():
     """
     Executes Prompt 1 logic:
@@ -57,11 +90,14 @@ def generate_backlog():
     topics_path = os.path.join(os.path.dirname(__file__), "topics.json")
 
     seed_data, data_source = load_seed_posts(seed_path)
-    if data_source != "apify_scrape":
-        print(
-            f"[Stage 0] NOTE seed data_source={data_source!r} — the weights below are "
-            f"editorial priors, not observed performance."
-        )
+    if data_source == "hand_seeded_priors":
+        print("[Stage 0] NOTE seed is hand-seeded priors — the view counts are "
+              "invented, so the weights below are editorial guesses.")
+    elif data_source == "teardown_observed":
+        print("[Stage 0] NOTE seed is the 13 Sep 2026 teardown — real observed "
+              "views, but a ~20-post sample and not age-adjusted.")
+    elif data_source != "apify_scrape":
+        print(f"[Stage 0] NOTE unrecognised seed data_source={data_source!r}.")
 
     # 7-day cutoff rule
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -75,6 +111,8 @@ def generate_backlog():
         "Symbols & Civics": [],
         "Global Geography": []
     }
+
+    set_views, single_views = [], []
 
     seed_titles = set()
     for post in seed_data:
@@ -97,6 +135,7 @@ def generate_backlog():
                 print(f"[Stage 0] WARNING unparseable timestamp {ts_str!r} on {title!r}")
 
         if not is_recent:
+            (set_views if is_set_shaped(post) else single_views).append(views)
             if any(k in title for k in ["RIVER", "महानदी", "तापी", "गोदावरी", "KAVERI", "कवि", "ஆறுகள்"]):
                 series_views["Sacred Rivers"].append(views)
             elif any(k in title for k in ["TEMPLE", "तिरुवनंतपुरम", "PADMANABHASWAMY"]):
@@ -118,6 +157,16 @@ def generate_backlog():
         else:
             med = 750000
         series_medians[s_name] = med
+
+    # Collections gets its own series, weighted off the set-shaped posts
+    # rather than off a theme. With no set-shaped posts in the seed it falls
+    # back to the best theme median, so it is never silently zeroed.
+    set_median = _median(set_views)
+    single_median = _median(single_views)
+    if set_median:
+        series_medians["Collections"] = set_median
+        series_views["Collections"] = set_views
+    set_lift = round(set_median / single_median, 2) if set_median and single_median else None
 
     max_med = max(series_medians.values()) if series_medians else 1000000
 
@@ -253,6 +302,14 @@ def generate_backlog():
             "weight": round(w_global * 0.88, 3)
         })
 
+    # 6. Collections — the shape the teardown says carries the account. Built
+    #    last so the single-subject expansions above keep the topic strings
+    #    used_topics.sha1 already hashes, and appended rather than replacing
+    #    them: a set topic outranks a single one by weight, not by deletion.
+    w_set = series_medians.get("Collections", max_med) / max_med
+    collections = build_collection_topics(w_set)
+    backlog.extend(collections)
+
     attach_subjects(backlog)
 
     # Final topics.json output object
@@ -263,15 +320,33 @@ def generate_backlog():
             "Weights are normalised series medians from seed.json. With "
             "data_source != 'apify_scrape' they are hand-set priors, not measurements."
         ),
+        "shape_basis": {
+            "set_median_views": int(set_median) if set_median else None,
+            "single_median_views": int(single_median) if single_median else None,
+            "set_lift": set_lift,
+            "note": (
+                "Median views of collection-shaped posts against single-subject "
+                "posts in the same seed. The Collections series weight comes "
+                "from the first of these. A lift well above 1 is the teardown's "
+                "central finding; it is a ~20-post sample, so treat it as "
+                "directional."
+            ),
+        },
         "series": series_meta,
         "backlog": backlog,
+        "set_topic_count": len(collections),
         "total_backlog_count": len(backlog)
     }
 
     with open(topics_path, "w", encoding="utf-8") as f:
         json.dump(output_obj, f, indent=2, ensure_ascii=False)
 
-    print(f"[Stage 0] Successfully generated topics.json with {len(backlog)} backlog topics across {len(series_meta)} series!")
+    print(f"[Stage 0] topics.json: {len(backlog)} topics across {len(series_meta)} "
+          f"series, {len(collections)} of them set topics")
+    if set_lift:
+        print(f"[Stage 0] set-shaped posts out-perform single-subject ones "
+              f"{set_lift}x in the seed ({int(set_median):,} vs {int(single_median):,} "
+              f"median views)")
     return topics_path
 
 def attach_subjects(backlog):
@@ -295,6 +370,8 @@ def attach_subjects(backlog):
     entities.sort(key=lambda pair: len(pair[0]), reverse=True)
 
     for item in backlog:
+        if item.get("subject"):
+            continue          # set topics name their own subject; don't guess over it
         topic = item["topic"]
         item["subject"] = next(
             (subject for name, subject in entities if name.lower() in topic.lower()),
@@ -309,7 +386,8 @@ def get_template_for_series(s_name):
         "Temples & Heritage": "Temples of {state}",
         "State Profiles": "{state} State Facts",
         "Symbols & Civics": "{symbol} Secrets",
-        "Global Geography": "{country} Unseen"
+        "Global Geography": "{country} Unseen",
+        "Collections": "The {attribute} of every {group}"
     }
     return templates.get(s_name, "{topic}")
 

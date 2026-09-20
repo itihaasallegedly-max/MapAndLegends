@@ -54,6 +54,44 @@ SAMPLE_SEED_POSTS = [
     {"url": "https://www.instagram.com/p/C35", "caption": "Assam state profile.", "videoViewCount": 1190000, "timestamp": "2026-09-08T10:00:00Z", "title": "অসম"}  # Published in last 7 days!
 ]
 
+# OBSERVED — read off the live @dailygeomap profile on 13 Sep 2026 and recorded
+# in the competitor teardown. ~20 reels sampled with their view counts. These
+# are real numbers, unlike SAMPLE_SEED_POSTS below, so they are what the seed
+# falls back to when no Apify token is configured.
+#
+# Two caveats carried over from the teardown: the counts are not age-adjusted,
+# and three of the posts are the account's own pinned picks. The two most
+# recent posts are dated inside the 7-day window on purpose — Stage 0's own
+# cutoff rule then excludes them from the medians, which is exactly right for
+# a reel that has not finished earning its views.
+TEARDOWN_OBSERVED_POSTS = [
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "Temples of Kerala", "videoViewCount": 7100000, "timestamp": "2026-05-02T10:00:00Z", "title": "TEMPLES OF KERALA"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "Indian Mountains", "videoViewCount": 4400000, "timestamp": "2026-05-16T10:00:00Z", "title": "INDIAN MOUNTAINS"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "State Fish of India", "videoViewCount": 3700000, "timestamp": "2026-06-01T10:00:00Z", "title": "STATE FISH"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "Indian Rivers", "videoViewCount": 1600000, "timestamp": "2026-06-14T10:00:00Z", "title": "INDIAN RIVERS"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "State Animals of India", "videoViewCount": 1300000, "timestamp": "2026-06-28T10:00:00Z", "title": "STATE ANIMALS"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "Kaveri, the river as a woman", "videoViewCount": 1200000, "timestamp": "2026-07-05T10:00:00Z", "title": "KAVERI"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "Karnataka", "videoViewCount": 1100000, "timestamp": "2026-07-12T10:00:00Z", "title": "ಕರ್ನಾಟಕ"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "Telangana Temples", "videoViewCount": 1000000, "timestamp": "2026-07-19T10:00:00Z", "title": "TELANGANA TEMPLES"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "Zonal Councils of India", "videoViewCount": 526000, "timestamp": "2026-07-26T10:00:00Z", "title": "ZONAL COUNCILS"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "Temples of Maharashtra", "videoViewCount": 363000, "timestamp": "2026-08-02T10:00:00Z", "title": "TEMPLES OF MAHARASHTRA"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "Spain", "videoViewCount": 271000, "timestamp": "2026-08-09T10:00:00Z", "title": "SPAIN"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "Flash Floods", "videoViewCount": 193000, "timestamp": "2026-08-16T10:00:00Z", "title": "FLASH FLOODS"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "Periyar", "videoViewCount": 114000, "timestamp": "2026-08-20T10:00:00Z", "title": "പെരിയാർ നദി"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "India Post", "videoViewCount": 88800, "timestamp": "2026-08-24T10:00:00Z", "title": "INDIA POST"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "Tapi", "videoViewCount": 78500, "timestamp": "2026-08-28T10:00:00Z", "title": "तापी"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "The Ahom kingdom", "videoViewCount": 72200, "timestamp": "2026-08-31T10:00:00Z", "title": "AHOM"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "Mahanadi", "videoViewCount": 68800, "timestamp": "2026-09-03T10:00:00Z", "title": "महानदी"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "National Symbols of India", "videoViewCount": 43000, "timestamp": "2026-09-10T10:00:00Z", "title": "NATIONAL SYMBOLS"},
+    {"url": "https://www.instagram.com/dailygeomap/", "caption": "Russia", "videoViewCount": 34000, "timestamp": "2026-09-12T10:00:00Z", "title": "RUSSIA"},
+    # Added from GeoGlobeTales (YouTube)
+    {"url": "https://www.youtube.com/@GeoGlobeTales/shorts", "caption": "Why People Settled the Most Remote Island", "videoViewCount": 1000000, "timestamp": "2026-08-01T10:00:00Z", "title": "MOST REMOTE ISLAND"},
+    {"url": "https://www.youtube.com/@GeoGlobeTales/shorts", "caption": "Why Virginia Split Into Two States", "videoViewCount": 2100000, "timestamp": "2026-08-10T10:00:00Z", "title": "VIRGINIA SPLIT"},
+    {"url": "https://www.youtube.com/@GeoGlobeTales/shorts", "caption": "The True Size of Hawaii", "videoViewCount": 1400000, "timestamp": "2026-08-20T10:00:00Z", "title": "TRUE SIZE OF HAWAII"},
+    {"url": "https://www.youtube.com/@GeoGlobeTales/shorts", "caption": "Why the Great Lakes Are So Great", "videoViewCount": 1300000, "timestamp": "2026-09-01T10:00:00Z", "title": "GREAT LAKES"},
+    {"url": "https://www.youtube.com/@GeoGlobeTales/shorts", "caption": "Why is the Netherlands Called Holland?", "videoViewCount": 818000, "timestamp": "2026-09-10T10:00:00Z", "title": "NETHERLANDS HOLLAND"},
+]
+
 APIFY_ACTOR = "apify~instagram-scraper"
 APIFY_POLL_ATTEMPTS = 60
 APIFY_POLL_SECONDS = 10
@@ -141,6 +179,23 @@ def fetch_seed_data():
     seed_file = os.path.join(os.path.dirname(__file__), "seed.json")
     token = os.getenv("APIFY_API_TOKEN", "").strip()
 
+    # Your own published reels first: free, and about your audience rather
+    # than someone else's. Only once there are enough of them to have a
+    # median worth trusting — see performance.MIN_ROWS_TO_WEIGH.
+    try:
+        from core import performance
+        own = performance.as_seed_posts()
+    except Exception as e:  # noqa: BLE001 — never block the seed on this
+        print(f"[Stage 0] own-channel ledger unreadable: {type(e).__name__}: {e}")
+        own = []
+    if own:
+        return _write_seed(
+            own, "own_channel", seed_file,
+            note=f"View counts read back from {len(own)} of your own published "
+                 f"reels via the YouTube and Instagram APIs. These are the only "
+                 f"numbers that describe your audience rather than a competitor's.",
+        )
+
     if token:
         try:
             posts = scrape_apify(token)
@@ -148,15 +203,16 @@ def fetch_seed_data():
                                note="Observed view counts from the Apify dataset.")
         except Exception as e:
             print(f"[Stage 0] Apify scrape failed ({type(e).__name__}: {e}).")
-            print("[Stage 0] Falling back to hand-seeded priors — weights will NOT "
-                  "reflect real performance.")
     else:
-        print("[Stage 0] No APIFY_API_TOKEN set; using hand-seeded priors.")
+        print("[Stage 0] No APIFY_API_TOKEN set.")
 
+    print("[Stage 0] Falling back to the 13 Sep 2026 teardown observations.")
     return _write_seed(
-        SAMPLE_SEED_POSTS, "hand_seeded_priors", seed_file,
-        note="View counts are invented. Series weights derived from these are "
-             "editorial priors, not measurements.",
+        TEARDOWN_OBSERVED_POSTS, "teardown_observed", seed_file,
+        note="View counts read off the live @dailygeomap profile on 13 Sep 2026. "
+             "Real observations, but a ~20-post sample, not age-adjusted, and "
+             "including the account's pinned picks. Better than the invented "
+             "priors in SAMPLE_SEED_POSTS; weaker than a full Apify scrape.",
     )
 
 

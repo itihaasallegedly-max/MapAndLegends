@@ -1,23 +1,26 @@
-# Daily Geography Content Pipeline — crontab
+# Daily Geography Content Pipeline — crontab (fallback scheduler)
 #
-# Install with:   crontab cron_jobs.sh
-# Verify with:    crontab -l
+# PREFER ./install_schedule.sh. It installs LaunchAgents, and launchd runs a
+# job that came due while the Mac was asleep; cron silently skips it. On a
+# laptop that sleeps at night, cron means most days produce nothing.
 #
-# Fixed here: the previous version redirected into logs/, which did not
-# exist, so the shell failed on the redirect and neither job ever ran —
-# silently, because the failure was in the redirect itself.
+# Use this only where launchd is not an option (a Linux box, a server):
+#   crontab cron_jobs.sh      install
+#   crontab -l                verify
 #
-# Times are the system's local timezone. CRON_TZ makes that explicit
-# instead of depending on how the daemon was started.
+# Also fixed here: the previous version called /usr/bin/flock, which does not
+# exist on macOS, so the daily line failed before it ever reached python.
+# run_daily.sh now takes its own lock with mkdir, which is portable.
 CRON_TZ=Asia/Kolkata
 MAILTO=""
 PROJECT=/Users/maheshwaripoul/Claude/Projects/DailyGeoMap
 
-# Weekly stats refresh — Monday 03:00 IST
-0 3 * * 1 cd $PROJECT && mkdir -p logs && /usr/bin/flock -n logs/weekly.lock ./venv/bin/python stage1_refresh_stats.py >> logs/cron_weekly.log 2>&1
+# Daily: preflight, generate, publish, resume anything unrendered, retry the
+# publish queue, write the heartbeat. run_daily.sh does all of it and logs.
+0 4 * * * $PROJECT/run_daily.sh
 
-# Daily generate & publish — 04:00 IST
-# flock -n stops a slow run from overlapping with the next one.
-# The trailing date write is a heartbeat: if logs/.last_daily is stale,
-# cron is not firing, whatever the log says.
-0 4 * * * cd $PROJECT && mkdir -p logs && /usr/bin/flock -n logs/daily.lock ./venv/bin/python pipeline_daily.py >> logs/cron_daily.log 2>&1; date -u +\%FT\%TZ > $PROJECT/logs/.last_daily
+# Publish queue: a failed upload is retried on a backoff, not lost.
+17 */2 * * * cd $PROJECT && ./venv/bin/python retry_publish.py >> logs/cron_publish.log 2>&1
+
+# Weekly stats refresh — Monday 03:00 IST
+0 3 * * 1 cd $PROJECT && ./venv/bin/python stage1_refresh_stats.py >> logs/cron_weekly.log 2>&1
