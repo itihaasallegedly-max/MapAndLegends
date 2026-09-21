@@ -111,9 +111,9 @@ def automate_google_flow(json_path):
                 prompt_text = f"{prompt_text} Voiceover: {narration_text}"
                 
             requested_seconds = float(segment.get("seconds", 8))
-            # Estimate audio duration: ~2.3 words per second (conservative ~138 WPM)
-            word_count = len(narration_text.split())
-            estimated_audio_seconds = word_count / 2.3 if word_count > 0 else 0
+            # Estimate audio duration for the narration
+            from utils.audio_estimation import estimate_audio_duration
+            estimated_audio_seconds = estimate_audio_duration(narration_text)
             
             # Ensure the video is long enough to fit the narration
             required_duration = max(requested_seconds, estimated_audio_seconds)
@@ -196,14 +196,22 @@ def automate_google_flow(json_path):
             tile.wait_for(state="visible", timeout=10000)
             tile.evaluate("el => el.click()")
             page.wait_for_url("**/edit/**", timeout=15000)
+            
+            print("Clearing the default timeline so we can append in strict order...")
+            page.wait_for_timeout(2000)
+            # Delete the initially auto-placed clip so we can start fresh
+            page.keyboard.press("Backspace")
+            page.keyboard.press("Delete")
+            page.wait_for_timeout(1000)
         except Exception as e:
             print(f"Warning: Could not enter Editor view automatically: {e}")
             
         num_scenes = len(segments)
         
-        # In Flow, the timeline usually keeps the very first clip you generated.
-        # We need to add the other clips from the media library.
-        for i in range(1, num_scenes):
+        # Add all clips in order from the media library.
+        # Since the timeline is empty, each clip added moves the playhead to its end,
+        # guaranteeing a perfect 1 -> 2 -> 3 -> 4 sequence.
+        for i in range(num_scenes):
             scene_index = (num_scenes - 1) - i
             print(f"Adding Scene {i+1} to timeline (Asset index {scene_index})...")
             
@@ -253,7 +261,7 @@ def automate_google_flow(json_path):
                 
         print("\nAssembly complete! All clips have been added to the master timeline in your current project.")
         if 'browser' in locals():
-            browser.disconnect()
+            browser.close()
             time.sleep(3)
 
 if __name__ == "__main__":

@@ -90,7 +90,27 @@ def validate_script(data, topic_spec):
     # (Previously scene_grammar.apply was called here. Now we just trust the model's segments)
     data["segments"] = segments
 
-    total = sum(s["seconds"] for s in segments)
+    requested_video_s = sum(s["seconds"] for s in segments)
+    
+    # Estimate actual audio duration from the narration text
+    from utils.audio_estimation import estimate_audio_duration
+    estimated_audio_s = sum(estimate_audio_duration(s.get("text", "")) for s in segments)
+    total_words = sum(len(str(s.get("text", "")).split()) for s in segments)
+    
+    if estimated_audio_s < MIN_RUNTIME_S:
+        raise ScriptGenerationError(
+            f"Script is too short: estimated audio is {estimated_audio_s:.1f}s "
+            f"({total_words} words), minimum is {MIN_RUNTIME_S}s."
+        )
+    if estimated_audio_s > MAX_RUNTIME_S:
+        raise ScriptGenerationError(
+            f"Script is too long: estimated audio is {estimated_audio_s:.1f}s "
+            f"({total_words} words), maximum is {MAX_RUNTIME_S}s."
+        )
+        
+    data["estimated_audio_s"] = round(estimated_audio_s, 2)
+    data["requested_video_s"] = requested_video_s
+
     facts = data["facts"]
     if not isinstance(facts, list) or not facts:
         raise ScriptGenerationError("Script returned an empty 'facts' array — nothing to fact-check")
@@ -378,7 +398,7 @@ def generate_script_prompt2(topic_spec):
     YOUR TOPIC IS: "{subject}"
     {set_brief(topic_spec)}
 
-    {"WATCH THE ATTACHED COMPETITOR VIDEO. You must transcribe its spoken script EXACTLY word-for-word. You must also replicate its visuals EXACTLY frame-by-frame. For each segment, the 'video_prompt' and the 'per_second' visual breakdowns must match the camera angles, map movements, and visual elements of the competitor video exactly, second by second. Do not create an original script or original visuals; duplicate theirs exactly." if video_file_obj else ""}
+    {"WATCH THE ATTACHED COMPETITOR VIDEO. You must replicate its visuals EXACTLY frame-by-frame. For the script, use their spoken audio as a baseline but CONDENSE and adapt it to strictly remain under 135 words total. (Some creators speak artificially fast; do not transcribe them word-for-word if it exceeds 135 words, or the TTS will fail). For each segment, your 'video_prompt' and 'per_second' visual breakdowns must match the competitor's visual sequence." if video_file_obj else ""}
 
     VISUAL STYLE TO EMULATE:
     {dynamic_style}
@@ -440,6 +460,7 @@ def generate_script_prompt2(topic_spec):
     }}
 
     Rules:
+    - CRITICAL WORD LIMIT: Your TOTAL word count across all 'text' fields combined MUST NOT exceed 140 words. If you write more than 140 words, the TTS system will fail. Write short, punchy sentences. Summarize the competitor script; do not transcribe it word-for-word.
     - Write about the topic presented in the video.
     - Keep your response concise (maximum 8 segments) so that the JSON does not get truncated.
     - Every scene's "seconds" must be exactly 4, 6, 8 or 10. No other value —
@@ -555,7 +576,7 @@ def generate_script_prompt2(topic_spec):
                 model=m,
                 contents=contents,
                 config=types.GenerateContentConfig(
-                    system_instruction="You are a professional scriptwriter for geography shorts. Always return ONLY valid JSON inside a ```json block.",
+                    system_instruction="You are a professional scriptwriter for geography shorts. You must keep scripts extremely concise (under 140 words total). Always return ONLY valid JSON inside a ```json block.",
                     max_output_tokens=8192,
                     response_mime_type="application/json",
                     safety_settings=[
@@ -584,9 +605,9 @@ def generate_script_prompt2(topic_spec):
         )
 
     data = validate_script(_extract_json(content), topic_spec)
-    total = sum(s["seconds"] for s in data["segments"])
     print(
         f"[Prompt 2] Script for '{subject}': {len(data.get('segments', []))} scenes, "
+        f"est. audio {data.get('estimated_audio_s')}s, "
         f"{len(data['facts'])} checkable claims, "
         f"{sum(len(s['per_second']) for s in data['segments'])} per-second prompts"
     )

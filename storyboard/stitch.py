@@ -118,8 +118,15 @@ parts, labels, inputs = [], [], []
 for i, m in enumerate(marks):
     start = m["start"] if i else 0.0
     end = marks[i + 1]["start"] if i + 1 < len(marks) else TOTAL
+    
+    start_frame = int(round(start * FPS))
+    if i + 1 == len(marks):
+        end_frame = int(math.ceil(TOTAL * FPS)) + FPS  # add 1s padding to the last scene
+    else:
+        end_frame = int(round(end * FPS))
+        
     dur = end - start
-    frames = max(int(round(dur * FPS)), 2)
+    frames = max(end_frame - start_frame, 2)
     mode, zmax, drift = MOVES[i % len(MOVES)]
     if mode == "in":
         z = f"min(zoom+{(zmax - 1) / frames:.7f},{zmax})"
@@ -152,7 +159,7 @@ t_out = marks[0]["end"] + 0.15
 # single frame at t=0, so a fade filter evaluates once, at t=0, and holds that
 # result forever — an alpha fade-in leaves the overlay invisible for the whole
 # video.
-inputs += ["-loop", "1", "-framerate", str(FPS), "-t", f"{TOTAL:.3f}", "-i", "img/scrim.png"]
+inputs += ["-loop", "1", "-framerate", str(FPS), "-t", f"{TOTAL + 1.0:.3f}", "-i", "img/scrim.png"]
 inputs += ["-loop", "1", "-framerate", str(FPS), "-t", f"{t_out:.3f}", "-i", "img/title.png"]
 inputs += ["-i", AUDIO]
 SCRIM, TITLE, AUD = n, n + 1, n + 2
