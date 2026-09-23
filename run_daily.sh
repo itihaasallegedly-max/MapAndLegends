@@ -2,7 +2,7 @@
 # One unattended run, start to finish. This is what the scheduler calls.
 #
 #   preflight  — says in the log what would block publishing
-#   pipeline   — draw, script, gate, art, voice, render, publish
+#   pipeline   — draw, script, Flow clips (downloaded), local stitch, publish
 #   --resume   — finish any script that passed the gate but never rendered
 #   retry      — re-attempt publishes that are due in the queue
 #
@@ -30,11 +30,14 @@ exec >> logs/cron_daily.log 2>&1
 echo
 echo "================ $(date -u +%FT%TZ) daily run ================"
 
+# Instagram-Login tokens last 60 days; refresh weekly so it never lapses.
+"$PY" -c "from core.uploader import refresh_instagram_token as r; print('[ig token]', r())" || echo "[run_daily] IG token refresh failed"
+
 "$PY" preflight.py || echo "[run_daily] preflight reported blockers — continuing so that whatever CAN run, does"
 
-"$PY" core/sync_references.py
+[ -f core/sync_references.py ] && "$PY" core/sync_references.py
 
-"$PY" pipeline_daily.py
+"$PY" pipeline_daily.py --once-per-day
 status=$?
 case $status in
   0) echo "[run_daily] published or rendered" ;;

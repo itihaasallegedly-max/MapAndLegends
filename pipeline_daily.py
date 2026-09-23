@@ -19,7 +19,8 @@ import traceback
 from dotenv import load_dotenv
 
 from core import performance
-from core.google_flow_automator import automate_google_flow
+from core import publish_queue
+from core.flow_stitch import render_reel
 from pipeline_errors import (
     AssetGenerationError,
     ConfigError,
@@ -280,13 +281,17 @@ def run_script_generation(force_topic=None, max_attempts=5):
 
 
 def run_render_pipeline(slug, generate_only=False):
-    """
-    Runs the media generation, video assembly, and publishing phase for a specific slug.
-    Returns the video path on success, or None on failure.
+    """Flow clips -> download -> local stitch -> upload, for one slug.
+
+    Same flow as ItihaasaAllegedly: every scene is generated in Google Flow and
+    downloaded (core/flow_gen.py), stitched here with ffmpeg
+    (core/flow_stitch.py), then published to YouTube + Instagram. A platform
+    that fails is queued in <slug>_publish.json and retried by retry_publish.py.
+    Returns the reel path on success (rendered or published), None on failure.
     """
     started = datetime.datetime.now()
     output_dir = os.path.join(BASE_DIR, "outputs", slug)
-    
+
     script_path = naming.path(output_dir, slug, "script")
     topic_spec_path = naming.path(output_dir, slug, "topic_spec")
     if not os.path.exists(topic_spec_path):
@@ -308,33 +313,58 @@ def run_render_pipeline(slug, generate_only=False):
         topic_spec = {"topic": script_data.get("subject") or slug, "series": "Unknown"}
 
     print("=" * 58)
-    print("GOOGLE FLOW AUTOMATION PHASE")
-    mode = "generate-only" if generate_only else "generate+publish (manual)"
-    print(f"started {started.isoformat(timespec='seconds')} | mode={mode}")
+    print("RENDER PHASE — Google Flow clips, stitched locally")
+    print(f"started {started.isoformat(timespec='seconds')} | "
+          f"mode={'generate-only' if generate_only else 'generate+publish'}")
     print(f"slug    {slug}")
     print("=" * 58)
 
-    try:
+    reel_path = naming.path(output_dir, slug, "reel")
+    if os.path.exists(reel_path):
+        print(f"[render] reel already on disk — skipping Flow: {reel_path}")
+    else:
+        try:
+            reel_path = render_reel(script_data, output_dir, slug)
+        except AssetGenerationError as e:
+            print(f"\n!! Render failed: {e}")
+            _append_jsonl(RUNS_FILE, {
+                "started": started.isoformat(timespec="seconds"),
+                "outcome": "render_failed", "topic": topic_spec["topic"],
+                "slug": slug, "error": str(e),
+            })
+            return None
 
-        print(f"Executing Google Flow Automation for script: {script_path}")
-        automate_google_flow(script_path)
-        
-        # We no longer have an automated publisher since the file lives in Flow.
-        print("\n[Flow Complete] Video is assembled in Google Flow!")
-        print("Please review it in your browser, hit Export, and publish manually.")
-        
-        elapsed = (datetime.datetime.now() - started).total_seconds()
-        print("\n" + "=" * 58)
-        print("AUTOMATION COMPLETE")
-        print(f"slug    {slug}")
-        print(f"took    {elapsed:.0f}s")
-        print("=" * 58)
-        
-        return script_path
-        
-    except Exception as e:
-        print(f"\n!! Flow Automation Error: {type(e).__name__}: {e}")
-        return None
+    if generate_only:
+        return _finish(started, topic_spec, reel_path, None, [], generate_only=True)
+
+    prior = publish_queue.load(slug)
+    todo = publish_queue.pending_platforms(prior) if prior else None
+    if prior and not todo:
+        print("[publish] already live on every platform")
+        return reel_path
+    from core.uploader import publish_video
+    result = publish_video(reel_path, script_data, platforms=todo)
+    state = publish_queue.record(slug, reel_path, result)
+    left = publish_queue.pending_platforms(state)
+    if left:
+        print(f"[publish] queued for retry: {', '.join(left)}")
+    return _finish(started, topic_spec, reel_path, result, [])
+
+
+def published_today():
+    today = datetime.date.today().isoformat()
+    try:
+        with open(RUNS_FILE, encoding="utf-8") as f:
+            for line in f:
+                try:
+                    r = json.loads(line)
+                except ValueError:
+                    continue
+                if r.get("outcome") == "published" and str(r.get("started", "")).startswith(today):
+                    return True
+    except OSError:
+        pass
+    return False
 
 
 def resume_unrendered(generate_only=False, limit=5):
@@ -358,12 +388,16 @@ def resume_unrendered(generate_only=False, limit=5):
         reel_path = naming.path(output_dir, slug, "reel")
         if not os.path.exists(script_path) or os.path.exists(reel_path):
             continue
-        try:
-            with open(gate_path, "r", encoding="utf-8") as f:
-                if not json.load(f).get("safe_to_publish"):
-                    continue
-        except (OSError, json.JSONDecodeError):
-            continue  # never rendered, never verified: leave it alone
+        # The fact-check stage is gone from the script phase, so a missing
+        # verdict no longer means "never verified". Only an explicit "unsafe"
+        # verdict holds a script back.
+        if os.path.exists(gate_path):
+            try:
+                with open(gate_path, "r", encoding="utf-8") as f:
+                    if not json.load(f).get("safe_to_publish", True):
+                        continue
+            except (OSError, json.JSONDecodeError):
+                pass
         pending.append(slug)
 
     if not pending:
@@ -436,6 +470,9 @@ if __name__ == "__main__":
                              "voiceover, no images, no video")
     parser.add_argument("--max-attempts", type=int, default=5,
                         help="how many topics to try before giving up")
+    parser.add_argument("--once-per-day", action="store_true",
+                        help="do nothing if a reel was already published today "
+                             "(the later daily slot is a retry, not a second video)")
     parser.add_argument("--resume", action="store_true",
                         help="render scripts that passed the gate but have no "
                              "video yet, then stop")
@@ -444,6 +481,9 @@ if __name__ == "__main__":
     try:
         cleanup_old_outputs(days=30)
         
+        if args.once_per_day and published_today():
+            print("[daily] a reel already went out today — nothing to draw")
+            sys.exit(0)
         if args.resume:
             result = resume_unrendered(generate_only=args.generate_only)
         else:

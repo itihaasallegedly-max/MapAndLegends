@@ -26,6 +26,7 @@ sys.path.insert(0, BASE_DIR)
 load_dotenv()
 
 OK, WARN, FAIL = "OK", "WARN", "FAIL"
+SCRIPT_MODEL = "gemini-3.5-flash-lite"   # what stage2_prompt2_script.py calls
 results = []
 
 
@@ -38,18 +39,14 @@ def check(name, status, detail=""):
 
 def check_env():
     required = {
-        "XAI_API_KEY": "no model calls are possible without it",
-        "GROK_TEXT_MODEL": "run diagnose_api.py for an ID your key serves",
-        "GROK_IMAGE_MODEL": "cover art falls back to brand backdrops without it",
-        "VOICE_NAME": "Kokoro voice, e.g. am_michael",
-        "CHANNEL_HANDLE": "burned into every slide footer; the renderer refuses without it",
+        "GEMINI_API_KEY": "Prompt 2 (the Hindi script) is a Gemini call",
+        "CHANNEL_HANDLE": "drawn as the footer on every reel",
     }
-    missing = [k for k in required if not (os.getenv(k) or "").strip()]
+    missing = [k for k in required if not (os.getenv(k) or os.getenv("GOOGLE_API_KEY" if k == "GEMINI_API_KEY" else "_") or "").strip()]
     if missing:
-        return check("env", FAIL, "missing: " + ", ".join(
-            f"{k} ({required[k]})" for k in missing))
-    return check("env", OK, f"handle {os.getenv('CHANNEL_HANDLE')}, "
-                            f"text {os.getenv('GROK_TEXT_MODEL')}")
+        return check("env", FAIL, "missing: " + ", ".join(f"{k} ({required[k]})" for k in missing))
+    return check("env", OK, f"handle {os.getenv('CHANNEL_HANDLE')}, narration "
+                            f"{os.getenv('NARRATION_LANG', 'hi')}, script model {SCRIPT_MODEL}")
 
 
 def check_python_deps():
@@ -74,26 +71,30 @@ def check_python_deps():
 def check_ffmpeg():
     for binary in ("ffmpeg", "ffprobe"):
         if not shutil.which(binary):
-            return check("ffmpeg", FAIL, f"{binary} not on PATH")
+            return check("ffmpeg", FAIL, f"{binary} not on PATH — the reel is stitched locally")
+    return check("ffmpeg", OK, "ffmpeg + ffprobe on PATH (local stitch)")
+
+
+def check_flow():
+    """Google Flow makes the clips: Playwright must import and Chrome must be reachable or launchable."""
     try:
-        import tempfile
-        from core.video_assembler import pick_subtitle_filter, write_ass
-        # A temp dir, not logs/: this probe must not depend on being able to
-        # delete files inside the project.
-        probe_ass = os.path.join(tempfile.gettempdir(), "dailygeomap_preflight.ass")
-        write_ass([(0.0, 1.0, "preflight")], probe_ass)
-        chosen = pick_subtitle_filter(probe_ass)
-        try:
-            os.remove(probe_ass)
-        except OSError:
-            pass
-    except Exception as e:  # noqa: BLE001 — reported, not raised
-        return check("caption burn-in", FAIL, f"{type(e).__name__}: {str(e)[:200]}")
-    if chosen:
-        return check("caption burn-in", OK, chosen.split("=")[0] + " filter (libass)")
-    return check("caption burn-in", OK,
-                 "Pillow overlays — this ffmpeg has no libass, so cues are drawn "
-                 "and composited instead. Captions still ship.")
+        import playwright  # noqa: F401
+    except ImportError:
+        return check("google flow", FAIL, "playwright missing — ./venv/bin/pip install playwright")
+    import urllib.request
+    cdp = os.getenv("FLOW_CDP", "http://localhost:9222")
+    try:
+        urllib.request.urlopen(cdp + "/json/version", timeout=3).read()
+        return check("google flow", OK, f"automation Chrome listening on {cdp}")
+    except Exception:  # noqa: BLE001
+        pass
+    profile = os.path.expanduser(os.getenv("FLOW_PROFILE", "~/.dailygeomap_chrome_profile"))
+    if not os.path.isdir(profile):
+        return check("google flow", FAIL,
+                     f"no Chrome profile at {profile} — run ./login_to_flow.sh once and sign in")
+    return check("google flow", WARN,
+                 "Chrome not running; flow_gen will launch it with the saved profile "
+                 "(if Flow logged you out, run ./login_to_flow.sh)")
 
 
 def check_shaping():
@@ -134,18 +135,14 @@ def check_art_fallback():
 
 
 def check_audio_bed():
-    """A missing bed is never fatal — but it should be visible, not silent."""
-    try:
-        from core import audio_bed
-        present = audio_bed.available()
-    except Exception as e:  # noqa: BLE001
-        return check("audio bed", WARN, f"{type(e).__name__}: {str(e)[:120]}")
-    if not any(present.values()):
-        return check("audio bed", WARN,
-                     "brand/audio is empty, so reels ship as narration over "
-                     "silence. Drop licensed files into brand/audio/music/.")
-    laid = ", ".join(kind for kind, ok in present.items() if ok)
-    return check("audio bed", OK, f"{laid} present")
+    """Optional music under the whole reel (core/flow_stitch.py picks the first file)."""
+    d = os.path.join(BASE_DIR, "brand", "audio")
+    beds = [f for f in (os.listdir(d) if os.path.isdir(d) else [])
+            if f.lower().endswith((".mp3", ".wav", ".m4a"))]
+    if not beds:
+        return check("audio bed", WARN, "brand/audio is empty — reels ship with Flow's own "
+                                        "ambience and the voice only, no music under them")
+    return check("audio bed", OK, f"{beds[0]} under every reel")
 
 
 def check_feedback_loop():
@@ -180,7 +177,7 @@ def check_collections():
     lift = (data.get("shape_basis") or {}).get("set_lift")
     basis = data.get("weight_basis", "unknown")
     if not sets:
-        return check("backlog shape", FAIL,
+        return check("backlog shape", WARN,
                      "no set topics — rerun stage0_prompt1_backlog.py; the "
                      "teardown measured collections out-performing single "
                      "subjects by an order of magnitude")
@@ -230,31 +227,24 @@ def check_map():
 
 
 def check_youtube():
-    secrets = os.getenv("YOUTUBE_CLIENT_SECRETS", "client_secrets.json")
-    token = os.getenv("YOUTUBE_TOKEN_FILE", "youtube_token.json")
-    secrets = secrets if os.path.isabs(secrets) else os.path.join(BASE_DIR, secrets)
-    token = token if os.path.isabs(token) else os.path.join(BASE_DIR, token)
-
-    if not os.path.exists(token):
-        return check("youtube", FAIL,
-                     f"no token at {os.path.basename(token)} — unattended publishing to "
-                     f"YouTube is impossible until you authorise once:\n"
-                     f"      ./venv/bin/python -c \"from core.uploader import authorise_youtube; authorise_youtube()\"" +
-                     ("" if os.path.exists(secrets) else
-                      f"\n      (and put your OAuth desktop client JSON at {os.path.basename(secrets)} first)"))
     try:
-        from google.auth.transport.requests import Request
-        from google.oauth2.credentials import Credentials
-        from core.uploader import YOUTUBE_SCOPES
-        creds = Credentials.from_authorized_user_file(token, YOUTUBE_SCOPES)
-        if creds.valid:
-            return check("youtube", OK, "token valid")
-        if creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-            return check("youtube", OK, "token refreshed")
-        return check("youtube", FAIL, "token present but not refreshable — re-authorise")
+        from googleapiclient.discovery import build
+        from core.uploader import AUTH_CMD, token_channel, youtube_credentials
+    except ImportError as e:
+        return check("youtube", FAIL, f"{e} — ./venv/bin/pip install -r requirements.txt")
+    try:
+        creds = youtube_credentials()
     except Exception as e:  # noqa: BLE001
-        return check("youtube", FAIL, f"{type(e).__name__}: {str(e)[:200]}")
+        return check("youtube", FAIL, str(e).replace("\n", " "))
+    want = os.getenv("YOUTUBE_CHANNEL_ID", "").strip()
+    try:
+        got, title = token_channel(build("youtube", "v3", credentials=creds, cache_discovery=False))
+    except Exception as e:  # noqa: BLE001
+        return check("youtube", FAIL, f"token refreshes but cannot name its channel "
+                                      f"({type(e).__name__}) — re-authorise: {AUTH_CMD}")
+    if want and got != want:
+        return check("youtube", FAIL, f"token is for '{title}' ({got}), not {want} — {AUTH_CMD}")
+    return check("youtube", OK, f"token valid for {title} ({got})")
 
 
 def check_instagram(online=False):
@@ -266,6 +256,11 @@ def check_instagram(online=False):
         return check("instagram", OK, f"credentials present for {user_id}")
     try:
         import requests
+        if token.startswith("IG"):   # Instagram-Login token: no debug_token, ask /me
+            from core.uploader import assert_instagram_account
+            assert_instagram_account(token)
+            return check("instagram", OK, f"token valid for @{os.getenv('IG_USERNAME') or user_id} "
+                                          f"(last refreshed {os.getenv('IG_TOKEN_REFRESHED') or 'unknown'})")
         r = requests.get(
             "https://graph.facebook.com/v21.0/debug_token",
             params={"input_token": token, "access_token": token}, timeout=20,
@@ -366,32 +361,24 @@ def check_unrendered():
 
 
 def check_models_online():
+    """Is the Gemini model Prompt 2 calls actually served to this key?"""
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=os.getenv("XAI_API_KEY"), base_url="https://api.x.ai/v1")
-        served = {m.id for m in client.models.list().data}
+        from google import genai
+        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
+        served = {m.name.split("/")[-1] for m in client.models.list()}
     except Exception as e:  # noqa: BLE001
-        return check("xai models", FAIL, f"{type(e).__name__}: {str(e)[:200]}")
+        return check("gemini", FAIL, f"{type(e).__name__}: {str(e)[:200]}")
+    if SCRIPT_MODEL not in served:
+        near = sorted(m for m in served if "flash" in m)[:6]
+        return check("gemini", FAIL, f"{SCRIPT_MODEL} not served to this key; flash models: {', '.join(near)}")
+    return check("gemini", OK, f"{SCRIPT_MODEL} served ({len(served)} models on this key)")
 
-    from core import model_client
-    missing = [m for m in model_client.text_models() + model_client.image_models()
-               if m not in served]
-    if missing:
-        return check("xai models", FAIL,
-                     f"not served by this key: {', '.join(missing)} — run diagnose_api.py")
-    return check("xai models", OK, f"{len(served)} models served, all configured IDs present")
-
-
-# -------------------------------------------------------------------- main
 
 def main(online=False):
     check_env()
     check_python_deps()
     check_ffmpeg()
-    check_shaping()
-    check_voice()
-    check_art_fallback()
-    check_map()
+    check_flow()
     check_youtube()
     check_instagram(online=online)
     check_backlog()

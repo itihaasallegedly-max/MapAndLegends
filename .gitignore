@@ -9,3 +9,7 @@ youtube_token.json
 .last_run
 *.aiff
 test_kokoro_direct.wav
+
+# local-only: scratch work, backups (scratch/ holds a .env backup with secrets)
+scratch/
+*.bak*

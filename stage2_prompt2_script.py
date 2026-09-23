@@ -29,6 +29,30 @@ MIN_RUNTIME_S = TARGET_MIN_S - 5
 MAX_RUNTIME_S = TARGET_MAX_S + 5
 REQUIRED_KEYS = ("title", "hook", "segments", "caption", "facts")
 
+# Narration language. The competitor reels are in English; with "hi" the model
+# takes their content, converts it and WRITES the narration ("text", "hook")
+# directly in spoken Hindi. Everything else stays English: visual prompts,
+# audio notes, facts (so they stay checkable), caption and upload metadata.
+NARRATION_LANG = os.getenv("NARRATION_LANG", "hi").strip().lower()
+DEVANAGARI = re.compile(r"[\u0900-\u097F]")
+
+HINDI_BRIEF = """
+    NARRATION LANGUAGE: HINDI.
+    The competitor video and any source material are in English. Understand the
+    content, then WRITE the narration yourself in natural spoken Hindi — do not
+    translate line by line. Every segment's "text" and the "hook" must be in
+    Hindi, in Devanagari script:
+    - Everyday Hindustani, the way a warm Indian documentary narrator speaks on
+      YouTube — not heavy Sanskritised Hindi, not Hinglish in Roman letters.
+    - Place, river, state and country names as Indians say them in Hindi
+      ("ओडिशा", "ब्रह्मपुत्र", "अरुणाचल प्रदेश").
+    - Write every number as Hindi words ("चौदह सौ पचास किलोमीटर"), never digits.
+    - The word limits below apply to the Hindi words you write.
+    - Keep "video_prompt", "per_second", "background", "audio", "facts",
+      "caption", "upload_title" and "upload_hashtags" in ENGLISH.
+    - "title_regional" is the title in Hindi (Devanagari).
+"""
+
 
 def _extract_json(raw):
     """Pull the JSON object out of a model response.
@@ -89,6 +113,14 @@ def validate_script(data, topic_spec):
     subject_name = topic_spec.get("subject") or topic_spec.get("topic", "")
     # (Previously scene_grammar.apply was called here. Now we just trust the model's segments)
     data["segments"] = segments
+
+    if NARRATION_LANG == "hi":
+        roman = [i for i, sg in enumerate(segments) if not DEVANAGARI.search(str(sg.get("text", "")))]
+        if roman:
+            raise ScriptGenerationError(
+                f"Narration must be Hindi in Devanagari; segment(s) {roman} are not. "
+                f"Write every segment's text in Hindi.")
+        data["narration_lang"] = "hi"
 
     requested_video_s = sum(s["seconds"] for s in segments)
     
@@ -380,7 +412,7 @@ def generate_script_prompt2(topic_spec):
         import time
         video_path = topic_spec["downloaded_video_path"]
         print(f"[Prompt 2] Uploading {video_path} to Gemini...")
-        video_file_obj = client.files.upload(path=video_path)
+        video_file_obj = client.files.upload(file=video_path)
         print(f"[Prompt 2] Video uploaded as {video_file_obj.name}. Waiting for processing...")
         while video_file_obj.state.name == "PROCESSING":
             time.sleep(3)
@@ -397,6 +429,7 @@ def generate_script_prompt2(topic_spec):
 
     YOUR TOPIC IS: "{subject}"
     {set_brief(topic_spec)}
+    {HINDI_BRIEF if NARRATION_LANG == "hi" else ""}
 
     {"WATCH THE ATTACHED COMPETITOR VIDEO. You must replicate its visuals EXACTLY frame-by-frame. For the script, use their spoken audio as a baseline but CONDENSE and adapt it to strictly remain under 135 words total. (Some creators speak artificially fast; do not transcribe them word-for-word if it exceeds 135 words, or the TTS will fail). For each segment, your 'video_prompt' and 'per_second' visual breakdowns must match the competitor's visual sequence." if video_file_obj else ""}
 
@@ -488,7 +521,7 @@ def generate_script_prompt2(topic_spec):
     - Do not state a fact you are not confident is current. Prefer stable facts (geography,
       official designations) over changeable ones (rankings, populations, records).
     - No "largest/longest/highest" claim unless it is an official designation.
-    - Plain spoken Indian English. No jargon, no filler.
+    - {"Plain spoken Hindi narration (Devanagari). No jargon, no filler." if NARRATION_LANG == "hi" else "Plain spoken Indian English. No jargon, no filler."}
     - `map_scenes` is what the renderer draws: each entry highlights one place
       on the map of the region, names it, and stands an illustrated `figure` on
       it. Fill it for any topic where places carry the content — one entry per
@@ -576,7 +609,9 @@ def generate_script_prompt2(topic_spec):
                 model=m,
                 contents=contents,
                 config=types.GenerateContentConfig(
-                    system_instruction="You are a professional scriptwriter for geography shorts. You must keep scripts extremely concise (under 140 words total). Always return ONLY valid JSON inside a ```json block.",
+                    system_instruction=("You are a professional scriptwriter for geography shorts. You must keep scripts extremely concise (under 140 words total). "
+                                        + ("Write all narration (segment 'text' and 'hook') in spoken Hindi, Devanagari script; keep every other field in English. " if NARRATION_LANG == "hi" else "")
+                                        + "Always return ONLY valid JSON inside a ```json block."),
                     max_output_tokens=8192,
                     response_mime_type="application/json",
                     safety_settings=[

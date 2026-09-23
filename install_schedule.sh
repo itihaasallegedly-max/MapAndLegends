@@ -59,11 +59,16 @@ close_plist() { cat >> "$AGENTS/$1.plist" <<'PLIST'
 PLIST
 }
 
-# --- daily, 04:00 local
+# --- daily: 10:00 main run, 16:30 retry slot (does nothing if 10:00 already published).
+# Kept clear of ItihaasaAllegedly, which uses the same Flow Chrome 13:00-14:30.
+# launchd runs a slot missed while the Mac slept as soon as it wakes.
 write_plist com.mapandlegend.daily "$PROJECT/run_daily.sh"
 cat >> "$AGENTS/com.mapandlegend.daily.plist" <<'PLIST'
   <key>StartCalendarInterval</key>
-  <dict><key>Hour</key><integer>4</integer><key>Minute</key><integer>0</integer></dict>
+  <array>
+    <dict><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
+  </array>
 PLIST
 close_plist com.mapandlegend.daily
 

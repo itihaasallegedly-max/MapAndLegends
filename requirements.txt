@@ -11,3 +11,4 @@ edge-tts
 requests
 yt-dlp
 edge-tts
+playwright

@@ -49,6 +49,22 @@ def fetch_unseen_competitor_shorts():
                 
     return unseen_urls
 
+def competitor_title(url):
+    """The competitor Short's own title, so Prompt 2 is told what the video is about
+    (and the output folder gets a readable name) instead of "Competitor Analysis"."""
+    try:
+        res = subprocess.run([str(YT_DLP_BIN), "--skip-download", "--no-warnings",
+                              "--extractor-args", "youtube:player_client=android",
+                              "--print", "title", url],
+                             capture_output=True, text=True, timeout=60)
+        title = res.stdout.strip().splitlines()[0] if res.returncode == 0 and res.stdout.strip() else ""
+    except Exception:  # noqa: BLE001 — a title is nice to have, never worth a failed run
+        title = ""
+    import re
+    title = re.sub(r"#\S+", "", title)          # drop hashtags from the title
+    return re.sub(r"\s+", " ", title).strip(" -|:")
+
+
 def draw_daily_topic(mark_used=False):
     """
     Automatically scrapes the latest competitor Shorts and picks one that hasn't been used.
@@ -59,10 +75,12 @@ def draw_daily_topic(mark_used=False):
         raise SystemExit("Backlog exhausted — no unseen videos found on competitor channels.")
 
     pick_url = unseen[0]  # Just take the freshest one
+    title = competitor_title(pick_url)
+    vid = pick_url.rstrip("/").split("/")[-1]
     pick = {
-        "topic": f"Competitor Analysis: {pick_url}",
+        "topic": f"{title} ({vid})" if title else f"Competitor Short {vid}",
         "url": pick_url,
-        "subject": "Competitor Analysis",
+        "subject": title or "the geography topic of the attached competitor video",
         "series": "Competitor Rewrite",
         "weight": 1.0
     }
@@ -72,6 +90,7 @@ def draw_daily_topic(mark_used=False):
         record_topic_used(pick)
 
     print(f"[Stage 2 Draw] Dynamically Picked Competitor URL: {pick_url}")
+    print(f"[Stage 2 Draw] Competitor title: {title or '(unavailable)'}")
     return pick
 
 def record_topic_used(pick):

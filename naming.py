@@ -32,6 +32,7 @@ KINDS = {
     "publish": "_publish.json",
     "topic_spec": "_topic_spec.json",   # the draw, kept for the render phase
     "art_source": "_art_source.json",   # where the cover art actually came from
+    "flow_job": "_flow_job.json",       # the Flow prompts, one clip per scene
 }
 
 # One still per scene. The renderer derives several shots from each, so a
