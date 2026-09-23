@@ -74,17 +74,45 @@ def record(slug, reel, result):
             wait = BACKOFF_H[entry["attempts"] - 1]
             entry["next_try"] = (_now() + datetime.timedelta(hours=wait)).isoformat(timespec="seconds")
     save(slug, state)
-    if not pending_platforms(state):
-        _drop_clips(slug)
+    if not pending_platforms(state) and not state.get("abandoned"):
+        cleanup_published(slug)
     return state
 
 
-def _drop_clips(slug):
-    """Once live everywhere, the raw Flow downloads are just duplicates of the reel."""
-    d = os.path.join(OUTPUTS, slug, "flow")
-    if os.path.isdir(d):
-        shutil.rmtree(d, ignore_errors=True)
-        print(f"[publish] cleaned up Flow clips for {slug}")
+KEEP_SUFFIXES = ("_publish.json", "_script.json", "_topic_spec.json")
+
+
+def is_live_everywhere(slug):
+    state = load(slug)
+    return bool(state) and not state.get("abandoned") and not pending_platforms(state)
+
+
+def cleanup_published(slug):
+    """Once the reel is live on every platform, delete everything local for it:
+    the reel, the Flow clips, the downloaded competitor video, stitch leftovers.
+    Only three small JSON records stay (a few KB): the publish record (platform
+    IDs, and what tells --resume/preflight this topic is finished), the script
+    and the topic spec."""
+    d = os.path.join(OUTPUTS, slug)
+    if not os.path.isdir(d):
+        return 0
+    freed = 0
+    for name in os.listdir(d):
+        path = os.path.join(d, name)
+        if os.path.isfile(path) and name.endswith(KEEP_SUFFIXES):
+            continue
+        try:
+            if os.path.isdir(path):
+                for root, _, files in os.walk(path):
+                    freed += sum(os.path.getsize(os.path.join(root, f)) for f in files)
+                shutil.rmtree(path)
+            else:
+                freed += os.path.getsize(path)
+                os.remove(path)
+        except OSError as e:
+            print(f"[cleanup] could not delete {name}: {e}")
+    print(f"[cleanup] {slug}: live everywhere, deleted local media ({freed / 1e6:.1f} MB freed)")
+    return freed
 
 
 def due(now=None):

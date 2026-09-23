@@ -350,8 +350,10 @@ def check_unrendered():
         d = os.path.join(outputs, slug)
         if not os.path.isdir(d) or slug.startswith("_"):
             continue
+        from core import publish_queue
         if (os.path.exists(naming.path(d, slug, "script"))
-                and not os.path.exists(naming.path(d, slug, "reel"))):
+                and not os.path.exists(naming.path(d, slug, "reel"))
+                and not publish_queue.is_live_everywhere(slug)):
             stuck.append(slug)
     if stuck:
         return check("unrendered scripts", WARN,

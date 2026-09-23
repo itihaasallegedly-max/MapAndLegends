@@ -320,6 +320,10 @@ def run_render_pipeline(slug, generate_only=False):
     print("=" * 58)
 
     reel_path = naming.path(output_dir, slug, "reel")
+    if publish_queue.is_live_everywhere(slug):
+        print("[render] already published on every platform — nothing to do")
+        publish_queue.cleanup_published(slug)
+        return reel_path
     if os.path.exists(reel_path):
         print(f"[render] reel already on disk — skipping Flow: {reel_path}")
     else:
@@ -341,6 +345,7 @@ def run_render_pipeline(slug, generate_only=False):
     todo = publish_queue.pending_platforms(prior) if prior else None
     if prior and not todo:
         print("[publish] already live on every platform")
+        publish_queue.cleanup_published(slug)
         return reel_path
     from core.uploader import publish_video
     result = publish_video(reel_path, script_data, platforms=todo)
@@ -388,6 +393,8 @@ def resume_unrendered(generate_only=False, limit=5):
         reel_path = naming.path(output_dir, slug, "reel")
         if not os.path.exists(script_path) or os.path.exists(reel_path):
             continue
+        if publish_queue.is_live_everywhere(slug):
+            continue  # published, and its media deliberately deleted afterwards
         # The fact-check stage is gone from the script phase, so a missing
         # verdict no longer means "never verified". Only an explicit "unsafe"
         # verdict holds a script back.
