@@ -48,8 +48,11 @@ HINDI_BRIEF = """
       ("ओडिशा", "ब्रह्मपुत्र", "अरुणाचल प्रदेश").
     - Write every number as Hindi words ("चौदह सौ पचास किलोमीटर"), never digits.
     - The word limits below apply to the Hindi words you write.
-    - Keep "video_prompt", "per_second", "background", "audio", "facts",
-      "caption", "upload_title" and "upload_hashtags" in ENGLISH.
+    - Keep "video_prompt", "per_second", "background", "audio", "facts"
+      and "upload_hashtags" in ENGLISH.
+    - "caption" and "upload_title" are in HINDI (Devanagari) — they are what
+      viewers read on YouTube and Instagram, so they match the narration.
+      Hashtags inside the caption stay in English letters (#Geography).
     - "title_regional" is the title in Hindi (Devanagari).
 """
 
@@ -72,9 +75,105 @@ def _extract_json(raw):
     try:
         return json.loads(text[start : end + 1])
     except json.JSONDecodeError as e:
-        raise ScriptGenerationError(
-            f"Model returned malformed JSON ({e}): {text[start:start + 300]!r}"
-        ) from e
+        first = e
+    # Flash-lite regularly leaves a trailing comma, a // note or a raw newline
+    # inside a string. Those are syntax slips, not a bad script: repair and
+    # re-parse before spending another Gemini call on the same topic.
+    try:
+        data = json.loads(_repair_json(text[start:]))
+        print(f"[Prompt 2] repaired malformed JSON ({first.msg} at line {first.lineno} col {first.colno})")
+        return data
+    except json.JSONDecodeError:
+        pass
+    _dump_raw(raw, first)
+    raise ScriptGenerationError(
+        f"Model returned malformed JSON ({first}): {text[start:start + 300]!r}"
+    ) from first
+
+
+def _repair_json(s):
+    """String-aware fixes: drop trailing commas and // comments, escape raw
+    newlines/tabs inside strings, close whatever a truncated reply left open."""
+    out, stack = [], []
+    in_str = esc = False
+    i, n = 0, len(s)
+
+    def drop_trailing_comma():
+        j = len(out) - 1
+        while j >= 0 and out[j] in " \t\r\n":
+            j -= 1
+        if j >= 0 and out[j] == ",":
+            del out[j]
+
+    while i < n:
+        ch = s[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            elif ch == "\n":
+                ch = "\\n"
+            elif ch == "\t":
+                ch = "\\t"
+            out.append(ch)
+        elif ch == '"':
+            in_str = True
+            out.append(ch)
+        elif (ch.isalpha() or ch == "_") and _prev_sig(out) in "{,":
+            # bare key like  _per_second: [  -> "per_second": [
+            m = re.match(r"([A-Za-z_][A-Za-z0-9_]*)\s*:", s[i:])
+            if m:
+                out.append('"' + m.group(1).lstrip("_") + '":')
+                i += m.end()
+                continue
+            out.append(ch)
+        elif ch == "/" and i + 1 < n and s[i + 1] == "/":
+            while i < n and s[i] != "\n":
+                i += 1
+            continue
+        elif ch in "{[":
+            stack.append("}" if ch == "{" else "]")
+            out.append(ch)
+        elif ch in "}]":
+            drop_trailing_comma()
+            if stack:
+                stack.pop()
+            out.append(ch)
+            if not stack:
+                break
+        else:
+            out.append(ch)
+        i += 1
+    if in_str:
+        out.append('"')
+    drop_trailing_comma()
+    while stack:
+        out.append(stack.pop())
+    return "".join(out)
+
+
+def _prev_sig(out):
+    for c in reversed(out):
+        if c not in " \t\r\n":
+            return c
+    return ""
+
+
+def _dump_raw(raw, err):
+    """Keep the reply that failed, so the next fix is made from evidence."""
+    try:
+        import datetime
+        logs = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+        os.makedirs(logs, exist_ok=True)
+        path = os.path.join(logs, f"prompt2_bad_json_{datetime.datetime.now():%Y%m%d_%H%M%S}.txt")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(f"# {err}\n{raw}")
+        print(f"[Prompt 2] raw reply saved to {path}")
+    except OSError:
+        pass
 
 
 def validate_script(data, topic_spec):
@@ -431,7 +530,7 @@ def generate_script_prompt2(topic_spec):
     {set_brief(topic_spec)}
     {HINDI_BRIEF if NARRATION_LANG == "hi" else ""}
 
-    {"WATCH THE ATTACHED COMPETITOR VIDEO. You must replicate its visuals EXACTLY frame-by-frame. For the script, use their spoken audio as a baseline but CONDENSE and adapt it to strictly remain under 135 words total. (Some creators speak artificially fast; do not transcribe them word-for-word if it exceeds 135 words, or the TTS will fail). For each segment, your 'video_prompt' and 'per_second' visual breakdowns must match the competitor's visual sequence." if video_file_obj else ""}
+    {"WATCH THE ATTACHED COMPETITOR VIDEO. You must replicate its visuals EXACTLY frame-by-frame. For the script, use their spoken audio as a baseline but adapt it to 105-135 words total (Some creators speak artificially fast; do not transcribe them word-for-word). If their video is short, ADD context, a cause or a consequence so the narration still reaches 105 words — a script under 95 words is rejected. For each segment, your 'video_prompt' and 'per_second' visual breakdowns must match the competitor's visual sequence." if video_file_obj else ""}
 
     VISUAL STYLE TO EMULATE:
     {dynamic_style}
@@ -493,7 +592,7 @@ def generate_script_prompt2(topic_spec):
     }}
 
     Rules:
-    - CRITICAL WORD LIMIT: Your TOTAL word count across all 'text' fields combined MUST NOT exceed 140 words. If you write more than 140 words, the TTS system will fail. Write short, punchy sentences. Summarize the competitor script; do not transcribe it word-for-word.
+    - CRITICAL WORD COUNT: the TOTAL words across all 'text' fields combined must be BETWEEN 105 AND 135 (that is {int(TARGET_MIN_S)}-{int(TARGET_MAX_S)} seconds spoken). Under 95 words is rejected as too short; over 140 is rejected as too long. Count before you answer. Short, punchy sentences — roughly 15-20 words per 8-second scene.
     - Write about the topic presented in the video.
     - Keep your response concise (maximum 8 segments) so that the JSON does not get truncated.
     - Every scene's "seconds" must be exactly 4, 6, 8 or 10. No other value —
@@ -609,8 +708,8 @@ def generate_script_prompt2(topic_spec):
                 model=m,
                 contents=contents,
                 config=types.GenerateContentConfig(
-                    system_instruction=("You are a professional scriptwriter for geography shorts. You must keep scripts extremely concise (under 140 words total). "
-                                        + ("Write all narration (segment 'text' and 'hook') in spoken Hindi, Devanagari script; keep every other field in English. " if NARRATION_LANG == "hi" else "")
+                    system_instruction=("You are a professional scriptwriter for geography shorts. Narration totals 105-135 words across all segments — never fewer than 95. "
+                                        + ("Write all narration (segment 'text' and 'hook'), 'caption', 'upload_title' and 'title_regional' in Hindi, Devanagari script; keep every other field in English. Every JSON key must be in double quotes. " if NARRATION_LANG == "hi" else "")
                                         + "Always return ONLY valid JSON inside a ```json block."),
                     max_output_tokens=8192,
                     response_mime_type="application/json",

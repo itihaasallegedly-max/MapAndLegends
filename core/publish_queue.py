@@ -115,8 +115,9 @@ def cleanup_published(slug):
     return freed
 
 
-def due(now=None):
-    """Slugs with at least one platform whose retry time has come."""
+def due(now=None, force=False):
+    """Slugs with at least one platform whose retry time has come
+    (force=True: every pending platform, regardless of next_try)."""
     now = now or _now()
     out = []
     if not os.path.isdir(OUTPUTS):
@@ -127,7 +128,7 @@ def due(now=None):
             continue
         for p in pending_platforms(state):
             nt = state["platforms"][p].get("next_try")
-            if nt and datetime.datetime.fromisoformat(nt) <= now:
+            if force or (nt and datetime.datetime.fromisoformat(nt) <= now):
                 out.append(slug)
                 break
     return out

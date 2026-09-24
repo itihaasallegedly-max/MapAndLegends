@@ -19,7 +19,8 @@ from core import publish_queue  # noqa: E402
 
 
 def main():
-    slugs = publish_queue.due()
+    force = "--force" in sys.argv[1:]  # retry every pending platform now
+    slugs = publish_queue.due(force=force)
     if not slugs:
         print(f"[retry] nothing due — {publish_queue.summary()}")
         return 0

@@ -18,6 +18,35 @@ from dotenv import load_dotenv
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pipeline_errors import ConfigError, PublishError  # noqa: E402
 
+
+# A DNS blip or dropped connection belongs to the moment, not to the upload:
+# retry the same request (same container) instead of failing the whole publish.
+# 24 Sep 2026: container created fine, then one status poll could not resolve
+# graph.instagram.com and the Reel was abandoned until the retry job.
+NET_RETRY_DELAYS = (10, 20, 40, 60, 90, 120)  # ~5.5 min total
+
+
+def _net(method, url, **kw):
+    last = None
+    for i, delay in enumerate((0,) + NET_RETRY_DELAYS):
+        if delay:
+            print(f"[Uploader]   network error ({type(last).__name__}); retrying in {delay}s "
+                  f"({i}/{len(NET_RETRY_DELAYS)})")
+            time.sleep(delay)
+        try:
+            return requests.request(method, url, **kw)
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            last = e
+    raise last
+
+
+def _net_get(url, **kw):
+    return _net("GET", url, **kw)
+
+
+def _net_post(url, **kw):
+    return _net("POST", url, **kw)
+
 load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -59,6 +88,12 @@ def build_metadata(script_data):
         script_data.get("upload_title") or script_data.get("title")
         or script_data.get("cover_text") or "Daily Geography"
     ).strip()
+    # Hindi channel: the title viewers read must be Hindi like the narration.
+    # If the model still wrote an English title, use the Hindi cover title.
+    lang = str(script_data.get("narration_lang") or os.getenv("NARRATION_LANG", "hi")).strip().lower()
+    regional = str(script_data.get("title_regional") or "").strip()
+    if lang == "hi" and not re.search(r"[\u0900-\u097F]", title) and re.search(r"[\u0900-\u097F]", regional):
+        title = regional
     caption = str(script_data.get("caption") or "").strip()
 
     hashtags = [w for w in caption.split() if w.startswith("#")]
@@ -107,6 +142,9 @@ def upload_to_youtube(video_path, script_data):
             "description": meta["description"],
             "tags": meta["tags"],
             "categoryId": "27",  # Education
+            # Declare the spoken language. Without it YouTube guesses from the
+            # English title and can serve an English auto-dub as the main track.
+            "defaultAudioLanguage": os.getenv("NARRATION_LANG", "hi").strip().lower() or "hi",
         },
         "status": {
             "privacyStatus": os.getenv("YOUTUBE_PRIVACY", "public"),
@@ -247,7 +285,7 @@ def assert_instagram_account(token):
     want_id = os.getenv("IG_USER_ID", "").strip()
     if not (want_user or want_id):
         return
-    r = requests.get(f"{graph_root(token)}/me", params={"fields": "user_id,username",
+    r = _net_get(f"{graph_root(token)}/me", params={"fields": "user_id,username",
                                                         "access_token": token}, timeout=30)
     if r.status_code != 200:
         raise ConfigError(f"Instagram token rejected ({r.status_code}): {_graph_error(r)}")
@@ -273,7 +311,7 @@ def refresh_instagram_token(min_age_days=7, force=False):
         age = 999
     if age < min_age_days and not force:
         return f"refreshed {age} day(s) ago — not due"
-    r = requests.get("https://graph.instagram.com/refresh_access_token",
+    r = _net_get("https://graph.instagram.com/refresh_access_token",
                      params={"grant_type": "ig_refresh_token", "access_token": token}, timeout=30)
     if r.status_code != 200 or "access_token" not in r.json():
         raise ConfigError(f"Instagram token refresh failed ({r.status_code}): {_graph_error(r)}")
@@ -303,7 +341,7 @@ def _ig_publish_via_url(video_path, meta, ig_user_id, access_token, root, attemp
             bad.clear()
         host, url = upload_to_public_host(Path(video_path), skip=bad)
         print(f"[Uploader] Instagram attempt {attempt}/{attempts}: video hosted on {host}")
-        resp = requests.post(f"{root}/{ig_user_id}/media", data={
+        resp = _net_post(f"{root}/{ig_user_id}/media", data={
             "media_type": "REELS", "video_url": url, "caption": meta["instagram_caption"],
             "share_to_feed": "true", "thumb_offset": "3000", "access_token": access_token,
         }, timeout=60)
@@ -313,14 +351,14 @@ def _ig_publish_via_url(video_path, meta, ig_user_id, access_token, root, attemp
         code, detail = None, ""
         for i in range(1, IG_POLL_ATTEMPTS + 1):
             time.sleep(IG_POLL_SECONDS)
-            st = requests.get(f"{root}/{container_id}", params={
+            st = _net_get(f"{root}/{container_id}", params={
                 "fields": "status_code,status", "access_token": access_token}, timeout=60).json()
             code, detail = st.get("status_code"), st.get("status", "")
             if code in ("FINISHED", "ERROR"):
                 break
             print(f"[Uploader]   {code} ({i}/{IG_POLL_ATTEMPTS})")
         if code == "FINISHED":
-            pub = requests.post(f"{root}/{ig_user_id}/media_publish", data={
+            pub = _net_post(f"{root}/{ig_user_id}/media_publish", data={
                 "creation_id": container_id, "access_token": access_token}, timeout=120)
             if pub.status_code != 200:
                 raise PublishError(f"Publish failed ({pub.status_code}): {_graph_error(pub)}")
@@ -354,7 +392,7 @@ def upload_to_instagram(video_path, script_data):
         return _ig_publish_via_url(video_path, meta, ig_user_id, access_token, root)
 
     print(f"[Uploader] Instagram: creating REELS container ({size / 1e6:.1f} MB)...")
-    resp = requests.post(
+    resp = _net_post(
         f"{root}/{ig_user_id}/media",
         data={
             "media_type": "REELS",
@@ -373,7 +411,7 @@ def upload_to_instagram(video_path, script_data):
 
     print(f"[Uploader] Instagram: uploading bytes to container {container_id}...")
     with open(video_path, "rb") as fh:
-        up = requests.post(
+        up = _net_post(
             f"{RUPLOAD_ROOT}/{container_id}",
             headers={
                 "Authorization": f"OAuth {access_token}",
@@ -389,7 +427,7 @@ def upload_to_instagram(video_path, script_data):
 
     print("[Uploader] Instagram: waiting for transcode...")
     for attempt in range(1, IG_POLL_ATTEMPTS + 1):
-        st = requests.get(
+        st = _net_get(
             f"{root}/{container_id}",
             params={"fields": "status_code,status", "access_token": access_token},
             timeout=60,
@@ -409,7 +447,7 @@ def upload_to_instagram(video_path, script_data):
             f"{IG_POLL_ATTEMPTS * IG_POLL_SECONDS}s"
         )
 
-    pub = requests.post(
+    pub = _net_post(
         f"{root}/{ig_user_id}/media_publish",
         data={"creation_id": container_id, "access_token": access_token},
         timeout=120,
@@ -447,8 +485,9 @@ def publish_video(video_path, script_data, platforms=None):
             results[platform] = {"published": True,
                                  "id": globals()[fn_name](video_path, script_data), "error": None}
         except Exception as e:
-            results[platform] = {"published": False, "id": None, "error": f"{type(e).__name__}: {e}"}
-            print(f"[Uploader] {platform.upper()} FAILED — {type(e).__name__}: {e}")
+            msg = re.sub(r"access_token=[^&\s'\"]+", "access_token=***", f"{type(e).__name__}: {e}")
+            results[platform] = {"published": False, "id": None, "error": msg}
+            print(f"[Uploader] {platform.upper()} FAILED — {msg}")
 
     results["any_published"] = any(
         v["published"] for k, v in results.items() if isinstance(v, dict)
