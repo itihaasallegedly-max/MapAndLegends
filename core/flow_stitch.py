@@ -54,6 +54,14 @@ VOICE = os.getenv("FLOW_VOICE",
 # and stretched the line to fill whatever length it was given (2.1-3.1 w/s).
 FLOW_WORDS_PER_S = float(os.getenv("FLOW_WORDS_PER_S", "2.4"))
 GRID = (4, 6, 8, 10)
+# FLOW_MUSIC=1: Flow generates soft music inside every clip, and the local bed
+# is skipped so the two never stack. Each clip is a separate generation, so the
+# music line is fixed and identical in every prompt; expect some drift at cuts.
+# Clips go to flow_music/ so they never mix with (or reuse) music-less clips.
+FLOW_MUSIC = os.getenv("FLOW_MUSIC", "0").strip().lower() in ("1", "true", "yes", "on")
+MUSIC_STYLE = os.getenv("FLOW_MUSIC_STYLE",
+    "one slow, calm ambient string pad in a minor key with a soft low piano note now and then, "
+    "no drums, no beat, no melody that competes with the voice, the SAME music in every clip")
 NEG = ("full-bleed edge-to-edge vertical frame, no border, no letterbox, no on-screen "
        "text, no captions, no subtitles, no watermark, no logos")
 
@@ -128,7 +136,7 @@ def _position(i, n):
             "no pause to start, and no closing or final tone at the end.")
 
 
-def build_prompt(seg, style="", index=1, total=1, seconds=None):
+def build_prompt(seg, style="", index=1, total=1, seconds=None, music_style=None):
     """One Flow prompt. The narration block goes FIRST: text-to-video models
     weight the start of a prompt, and the narration is what has to carry across
     clips; the picture only has to carry within one."""
@@ -155,21 +163,30 @@ def build_prompt(seg, style="", index=1, total=1, seconds=None):
         parts.append(f"Visual style: {style}.")
     parts.append(NEG + ".")
     audio = seg.get("audio") or {}
-    sound = []
+    sound, fxs = [], []
     if isinstance(audio, dict):
         amb = str(audio.get("ambience") or "").strip().rstrip(".")
         if amb:
             sound.append(amb)
+        # Spot effects are the competitor's signature details (a firecracker
+        # crackle, a map pop). "Far below the voice" buried them, so they get
+        # their own sentence: clearly heard, timed, never over a word.
         for fx in audio.get("sfx") or []:
             if isinstance(fx, dict) and fx.get("cue"):
-                sound.append(f"{fx['cue']} at {fx.get('at', 0)}s")
+                at = min(float(fx.get("at", 0) or 0), max(0.0, seconds - 0.5))
+                fxs.append(f"{str(fx['cue']).strip().rstrip('.')} at {at:.1f}s")
     # Music is laid once under the whole reel at stitch time; per-clip music
     # would restart at every cut. Ambience was reaching -24 dB after the line,
     # which is what the gaps between scenes were full of.
     tail = ("SOUND: the narration is the main sound. "
             + (("Very quiet background: " + "; ".join(sound) + ", far below the voice. ") if sound else "")
-            + "No music, no other voices, no singing. "
-            + ("When the narrator finishes, the clip ends almost silent." if text else ""))
+            + (("SOUND EFFECTS, each one clearly heard at its moment, sitting just under the "
+                "voice and never covering a word: " + "; ".join(fxs) + ". ") if fxs else "")
+            + (f"Soft background music from 0 seconds to the end: {music_style or MUSIC_STYLE}; always much quieter "
+               "than the narration, steady volume, no swell, no sudden start or stop. No other voices, "
+               "no singing. " if FLOW_MUSIC else "No music, no other voices, no singing. ")
+            + (("When the narrator finishes, only the soft music continues." if FLOW_MUSIC
+                else "When the narrator finishes, the clip ends almost silent.") if text else ""))
     parts.append(tail if text else tail + " No voiceover.")
     return re.sub(r"\s+", " ", " ".join(parts)).strip()
 
@@ -179,13 +196,20 @@ def build_job(script_data, output_dir, slug):
     if not segments:
         raise AssetGenerationError("script has no segments")
     style = os.getenv("VIDEO_STYLE", "").strip()
-    flow_dir = Path(output_dir) / "flow"
+    flow_dir = Path(output_dir) / ("flow_music" if FLOW_MUSIC else "flow")
     flow_dir.mkdir(parents=True, exist_ok=True)
     n = len(segments)
     clips = []
+    # The competitor's music, described (never named), if the sound map heard
+    # one; the same words in every clip so the generations stay close.
+    mus = ((script_data.get("sound_map") or {}).get("music") or {})
+    music_style = None
+    if mus.get("present") and str(mus.get("style") or "").strip():
+        music_style = (str(mus["style"]).strip().rstrip(".") +
+                       ", no vocals, the SAME music in every clip")
     for i, seg in enumerate(segments, 1):
         secs = clip_seconds(seg)
-        clips.append({"prompt": build_prompt(seg, style, index=i, total=n, seconds=secs),
+        clips.append({"prompt": build_prompt(seg, style, index=i, total=n, seconds=secs, music_style=music_style),
                       "seconds": secs,
                       "out": str(flow_dir / f"{i:02d}.mp4")})
     job_path = Path(naming.path(output_dir, slug, "flow_job"))
@@ -347,7 +371,9 @@ def stitch(clip_paths, reel_path, work_dir):
           "-i", str(work / "a.txt"), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
           "-ar", "44100", "-ac", "2", "-c:a", "pcm_s16le", str(nar)])
 
-    bed = _audio_bed()
+    bed = None if FLOW_MUSIC else _audio_bed()
+    if FLOW_MUSIC:
+        log("FLOW_MUSIC=1: music comes from Flow, local bed skipped")
     if bed:
         level = float(os.getenv("MUSIC_LEVEL_DB", "-24"))
         mixed = work / "_mixed.wav"
@@ -414,11 +440,15 @@ def render_reel(script_data, output_dir, slug):
                 f"{len(still)}/{len(clips)} clip(s) not downloaded ({code}); "
                 f"the {len(clips) - len(still)} on disk are kept for --resume")
     reel = naming.path(output_dir, slug, "reel")
+    if os.getenv("FLOW_REEL_SUFFIX"):
+        reel = str(reel).replace(".mp4", os.getenv("FLOW_REEL_SUFFIX") + ".mp4")
     return str(stitch([c["out"] for c in clips], reel, output_dir))
 
 
 if __name__ == "__main__":
     # ./venv/bin/python core/flow_stitch.py <slug>   — render (or resume) one topic
+    # FLOW_MUSIC=1 FLOW_REEL_SUFFIX=_music ./venv/bin/python core/flow_stitch.py <slug>
+    #   — A/B test: same script, music from Flow, written beside the published reel
     if len(sys.argv) < 2:
         sys.exit("usage: core/flow_stitch.py <slug>")
     s = sys.argv[1]

@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-from core import model_client
+from core import model_client, sound_map
 from pipeline_errors import ConfigError, QuotaExhaustedError, ScriptGenerationError
 from utils.frame_extractor import extract_frames_base64
 
@@ -606,6 +606,17 @@ def generate_script_prompt2(topic_spec):
             raise ScriptGenerationError(f"Gemini failed to process the video: {video_path}")
         print("[Prompt 2] Video processing complete!")
 
+    # Their sound design, heard on its own before the script is written: a
+    # single pass over script + visuals + sound hears the words and loses the
+    # firecracker under them.
+    sm = sound_map.extract(client, video_file_obj, topic_spec.get("downloaded_video_path"),
+                           call_model=model_client.call_model, types=types)
+    if sm:
+        print(f"[SoundMap] {len(sm['events'])} sound event(s), music: "
+              f"{(sm.get('music') or {}).get('style') or 'none'}")
+        for e in sm["events"]:
+            print(f"[SoundMap]   {e['id']} {e['at']:>5}s {e['loudness']:<6} {e['sound']}")
+
     prompt = f"""
     You write scripts for {int(TARGET_MIN_S)}-{int(TARGET_MAX_S)} second vertical geography shorts aimed at an Indian audience,
     including competitive-exam aspirants.
@@ -614,6 +625,7 @@ def generate_script_prompt2(topic_spec):
     {set_brief(topic_spec)}
     {HINDI_BRIEF if NARRATION_LANG == "hi" else ""}
     {STORY_BRIEF}
+    {sound_map.brief(sm)}
 
     {"WATCH THE ATTACHED COMPETITOR VIDEO. You must replicate its visuals EXACTLY frame-by-frame. For the script, use their spoken audio as a baseline but adapt it to 105-135 words total (Some creators speak artificially fast; do not transcribe them word-for-word). If their video is short, ADD context, a cause or a consequence so the narration still reaches 105 words — a script under 95 words is rejected. For each segment, your 'video_prompt' and 'per_second' visual breakdowns must match the competitor's visual sequence." if video_file_obj else ""}
 
@@ -777,8 +789,9 @@ def generate_script_prompt2(topic_spec):
     - "music" describes instruments and movement, and must stay out of the way
       of the read. Name what it does at this point — enters, holds, drops out.
     - "sfx" lists spot effects with the second each lands on, relative to the
-      start of THIS scene. One or two, in the places a cut or a movement wants
-      punctuation. Leave the array empty rather than inventing filler.
+      start of THIS scene. Every competitor sound assigned to this scene goes
+      here with its "ref". Beyond those, add one only where a cut or a movement
+      wants punctuation; never invent filler.
     - "voice" names only the word that carries the emphasis. The narrator is
       the SAME man at the SAME calm pace and pitch in every scene: never ask
       for a different tone, energy or mood per scene — each clip is voiced
@@ -839,6 +852,14 @@ def generate_script_prompt2(topic_spec):
 
         try:
             data = validate_script(_extract_json(content), topic_spec)
+            miss = sound_map.missing(data["segments"], sm)
+            if miss and script_try < STORY_RETRIES:
+                raise ScriptGenerationError(sound_map.missing_reason(miss))
+            placed = sound_map.fill_missing(data["segments"], sm)
+            if placed:
+                print(f"[SoundMap] model still dropped {placed} — placed by time")
+            if sm:
+                data["sound_map"] = sm
             break
         except ScriptGenerationError as err:
             if script_try == STORY_RETRIES:
