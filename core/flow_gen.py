@@ -378,16 +378,34 @@ def submit(page, prompt, seconds):
     return False
 
 
-def stamp_tiles(page, n):
-    """Label the newest n tiles with their clip number in one atomic JS pass.
-    The grid is newest-first, so tile i of the first n is clip (n-1-i). Only stamps
-    when at least n tiles are rendered; otherwise existing stamps are kept."""
+def tile_labels(n, retry_order):
+    """Clip label for each grid position, newest first.
+
+    Flow's grid is newest-first. Clicking Retry on a failed tile REMOVES that
+    tile and puts the new attempt at the TOP of the grid; the tile count stays
+    n. Seen on 26 Sep (Gibraltar): after retrying clip 1 the grid read
+    1,7,6,5,4,3,2. Counting positions as if nothing moved matched clip 1 to
+    clip 2's tile for 20 minutes. So: retried clips first (most recent retry
+    on top, each clip once), then the untouched originals, newest first."""
+    labels, seen = [], set()
+    for k in reversed(retry_order):
+        if k not in seen:
+            labels.append(str(k)); seen.add(k)
+    labels += [str(n - 1 - i) for i in range(n) if (n - 1 - i) not in seen]
+    return labels
+
+
+def stamp_tiles(page, n, retry_order=()):
+    """Label the grid's tiles with their clip number in one atomic JS pass (the
+    grid is virtualised, so stamps are re-applied every poll). Only stamps when
+    every expected tile is rendered; otherwise existing stamps are kept."""
+    labels = tile_labels(n, list(retry_order))
     try:
         return page.evaluate(
-            """([sel, n]) => { const els = document.querySelectorAll(sel);
-                 if (els.length < n) return els.length;
-                 for (let i = 0; i < n; i++) els[i].setAttribute('data-dgm-clip', String(n - 1 - i));
-                 return els.length; }""", [TILE_SEL, n])
+            """([sel, labels]) => { const els = document.querySelectorAll(sel);
+                 if (els.length < labels.length) return els.length;
+                 for (let i = 0; i < labels.length; i++) els[i].setAttribute('data-dgm-clip', labels[i]);
+                 return els.length; }""", [TILE_SEL, labels])
     except Exception:
         return -1
 
@@ -437,16 +455,20 @@ def run_batch(page, context, clips):
         return len(clips)
     tiles = page.locator(TILE_SEL)
     saved, retries = set(), {}
+    retry_order, rejects, retry_wait = [], {}, {}                 # clips in the order Retry was clicked
+    MAX_REJECTS = 4
     deadline = time.time() + max(TIMEOUT, 150 * n)
     log(f"all {n} queued — waiting for Flow to finish them together")
     hashes = {}                                   # clip k -> sha1 of its saved file
-    while time.time() < deadline and len(saved) < n:
+    while time.time() < deadline and len(saved) + sum(1 for k in rejects if rejects[k] >= MAX_REJECTS) < n:
         time.sleep(15)
-        stamp_tiles(page, n)
+        stamp_tiles(page, n, retry_order)
         states = []
         for k, c in enumerate(queued):
             if k in saved:
                 states.append("saved"); continue
+            if rejects.get(k, 0) >= MAX_REJECTS:
+                states.append("gave-up"); continue
             # Target the tile by the clip number stamped on it, never by a position
             # counted earlier: Flow's grid is virtualised, so tiles leave and re-enter
             # the DOM while we scroll, and a stale nth() silently lands on the
@@ -463,8 +485,9 @@ def run_batch(page, context, clips):
                     h = file_sha1(out)
                     dup = [j for j, hh in hashes.items() if hh == h and j != k]
                     if dup:
+                        rejects[k] = rejects.get(k, 0) + 1
                         log(f"REJECTED {out.name}: identical to clip {dup[0]+1:02d}.mp4 "
-                            f"(wrong tile) — will fetch again")
+                            f"(wrong tile) — {'will fetch again' if rejects[k] < MAX_REJECTS else 'giving up on it this run; --resume regenerates it'}")
                         try: out.unlink()
                         except Exception: pass
                         continue
@@ -472,11 +495,16 @@ def run_batch(page, context, clips):
                     saved.add(k); log(f"saved {out.name}")
                 else:
                     log(f"DOWNLOAD FAILED {out.name}")
-            elif st == "failed" and retries.get(k, 0) < 2:
+            elif st == "failed" and retries.get(k, 0) < 2 and time.time() > retry_wait.get(k, 0):
+                # the new tile can take a poll or two to appear; until it does the
+                # stamp still points at the old failed tile, which must not be retried again
                 retries[k] = retries.get(k, 0) + 1
                 log(f"{out.name} failed in Flow — Retry {retries[k]}/2")
                 try:
                     tile.locator("button[aria-label='Retry']").first.evaluate("el => el.click()")
+                    retry_order.append(k)         # Flow puts the retry in a NEW tile on top
+                    retry_wait[k] = time.time() + 90
+                    page.wait_for_timeout(4000)
                 except Exception:
                     pass
         log("status: " + " ".join(f"{i+1}:{st}" for i, st in enumerate(states)))
