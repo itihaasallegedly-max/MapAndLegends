@@ -93,6 +93,9 @@ def cleanup_published(slug):
     Only three small JSON records stay (a few KB): the publish record (platform
     IDs, and what tells --resume/preflight this topic is finished), the script
     and the topic spec."""
+    if os.getenv("KEEP_LOCAL_MEDIA", "").strip() == "1":
+        print(f"[cleanup] {slug}: KEEP_LOCAL_MEDIA=1 — local media kept")
+        return 0
     d = os.path.join(OUTPUTS, slug)
     if not os.path.isdir(d):
         return 0

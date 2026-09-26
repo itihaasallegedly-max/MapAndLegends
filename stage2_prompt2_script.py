@@ -57,6 +57,88 @@ HINDI_BRIEF = """
 """
 
 
+STORY_RETRIES = int(os.getenv("PROMPT2_STORY_RETRIES", "3"))
+STORY_BRIEF = """
+    THE NARRATION IS ONE STORY, NOT A LIST OF FACTS.
+    Each scene's line is voiced separately, clip by clip, so the only thing that
+    carries the viewer from one clip to the next is the words. Write it so that
+    a viewer who hears only the narration follows one thread from start to end:
+    - Segment 1's "text" IS the hook, word for word the same as "hook": a
+      surprising claim or a question the video then answers. Never open on a
+      flat definition ("X is a country in ...").
+    - Every later line picks up from the line before it. Start it with a
+      linking word or a reference back ("लेकिन", "फिर", "इसीलिए", "इसी वजह से",
+      "तो", "इसके बाद", "जवाब में", "तब", "यानी", "आखिर में", "यह", "इसी",
+      "दोनों", ...). No line may start a new subject cold.
+    - Cause before effect. If a line says something happened (a coup, a war, a
+      partition, a treaty), that line or the one before it says who did it and
+      why. "After a coup, Turkey occupied the north" without whose coup and
+      what it wanted is a fact, not a story.
+    - Keep every promise. If the hook names a number or asks a question ("four
+      parts", "why?"), the script delivers exactly that: name each item as the
+      story reaches it ("पहला ...", "दूसरा ...", "तीसरा ..."), and do not
+      leave one out.
+    - The last segment is the payoff: it answers the hook in one line and
+      closes the loop. Never end on a mid-story fact.
+    - Chronology runs one way. If you jump back in time after the hook, say so
+      ("यह कहानी शुरू होती है ..."), then move forward without skipping back.
+    - One or two complete sentences per scene. Never split a sentence across
+      two scenes: each clip is voiced on its own and a half-sentence cannot be.
+"""
+
+# Words a Hindi line uses to pick up from the one before, matched as whole
+# words in its first four (prefix matching let "उन्नीस" pass as "उन").
+LINKERS = set("""
+लेकिन पर परंतु मगर किंतु फिर इसीलिए इसलिए इसी इस इसे इसका इसकी इसके इसने इन इन्हें इनका इनकी इनके
+तो तब जब जवाब यानी आखिर आख़िर और क्योंकि यह ये वह वो वे उस उसे उसी उसका उसकी उसके उसने उन उन्हें
+उनका उनकी उनके उन्होंने दोनों जिसके जिसकी जिससे नतीजा नतीजतन अब आज बाद यहीं वहीं यहाँ वहाँ वहां यहां
+पहला पहली दूसरा दूसरी तीसरा तीसरी चौथा चौथी पाँचवाँ पांचवां बाकी बाक़ी साथ कहानी हालांकि हालाँकि इसीलिये
+""".split())
+COUNT_WORDS = {"दो": 2, "तीन": 3, "चार": 4, "पाँच": 5, "पांच": 5, "छह": 6, "छः": 6, "सात": 7}
+COUNT_NOUNS = ("हिस्स", "टुकड़", "टुकड", "भाग", "कारण", "वजह", "राज", "रहस्य", "देश", "नदि", "नदी",
+               "शहर", "सवाल", "चीज़", "चीज", "बात", "तरीक")
+ORDINALS = [("पहला", "पहली", "पहले"), ("दूसरा", "दूसरी", "दूसरे"), ("तीसरा", "तीसरी", "तीसरे"),
+            ("चौथा", "चौथी", "चौथे"), ("पाँचवाँ", "पांचवां", "पाँचवीं", "पांचवीं"), ("छठा", "छठी"),
+            ("सातवाँ", "सातवां", "सातवीं")]
+
+
+def _norm(t):
+    return re.sub(r"[\s\u0964\u0965!?,.:;\"'“”‘’—–-]+", " ", str(t)).strip()
+
+
+def check_story(segments, hook):
+    """The narration must read as one thread. Raises with what to fix."""
+    first = _norm(segments[0].get("text", ""))
+    h = _norm(hook)
+    if h and h not in first and first not in h:
+        raise ScriptGenerationError(
+            "Segment 1's text must BE the hook, word for word. The hook was "
+            f"\"{hook}\" but segment 1 says \"{segments[0].get('text', '')}\". "
+            "Put the hook as segment 1's spoken line.")
+    if NARRATION_LANG != "hi" or len(segments) < 3:
+        return
+    cold = [i for i, sg in enumerate(segments[1:], 2)
+            if not LINKERS.intersection(_norm(sg.get("text", "")).split()[:4])]
+    allowed = (len(segments) - 1) // 4          # one in four may link by content alone
+    if len(cold) > allowed:
+        raise ScriptGenerationError(
+            f"Scenes {cold} start a new subject cold. Each line after the hook must pick up "
+            f"from the one before: open it with a linking word (लेकिन, फिर, इसीलिए, तो, "
+            f"इसके बाद, जवाब में, यानी, आखिर में ...) or refer back to what was just said.")
+    # A hook that promises a count ("चार हिस्से") must be counted off.
+    words = h.split()
+    for k, w in enumerate(words[:-1]):
+        n = COUNT_WORDS.get(w)
+        if n and any(words[k + 1].startswith(c) for c in COUNT_NOUNS):
+            body = set(_norm(" ".join(str(sg.get("text", "")) for sg in segments[1:])).split())
+            missing = [ORDINALS[j][0] for j in range(n - 1) if not body.intersection(ORDINALS[j])]
+            if missing:
+                raise ScriptGenerationError(
+                    f"The hook promises {w} {words[k + 1]}, but the script never counts them off "
+                    f"(missing: {', '.join(missing)}). Name each one as the story reaches it "
+                    f"— पहला ..., दूसरा ... — and let the last line name the final one.")
+            break
+
 def _extract_json(raw):
     """Pull the JSON object out of a model response.
 
@@ -212,6 +294,8 @@ def validate_script(data, topic_spec):
     subject_name = topic_spec.get("subject") or topic_spec.get("topic", "")
     # (Previously scene_grammar.apply was called here. Now we just trust the model's segments)
     data["segments"] = segments
+
+    check_story(segments, data.get("hook", ""))
 
     if NARRATION_LANG == "hi":
         roman = [i for i, sg in enumerate(segments) if not DEVANAGARI.search(str(sg.get("text", "")))]
@@ -529,6 +613,7 @@ def generate_script_prompt2(topic_spec):
     YOUR TOPIC IS: "{subject}"
     {set_brief(topic_spec)}
     {HINDI_BRIEF if NARRATION_LANG == "hi" else ""}
+    {STORY_BRIEF}
 
     {"WATCH THE ATTACHED COMPETITOR VIDEO. You must replicate its visuals EXACTLY frame-by-frame. For the script, use their spoken audio as a baseline but adapt it to 105-135 words total (Some creators speak artificially fast; do not transcribe them word-for-word). If their video is short, ADD context, a cause or a consequence so the narration still reaches 105 words — a script under 95 words is rejected. For each segment, your 'video_prompt' and 'per_second' visual breakdowns must match the competitor's visual sequence." if video_file_obj else ""}
 
@@ -540,7 +625,7 @@ def generate_script_prompt2(topic_spec):
     {{
       "title": "<max 4 words, all caps, fits on a cover image>",
       "title_regional": "<the same title in the locally relevant script (Devanagari, Telugu, Tamil, Bengali, Assamese...) — for a non-Indian subject, return the English title>",
-      "hook": "<first 3 seconds of spoken script — a question or a surprising number>",
+      "hook": "<the opening line — a question or a surprising claim; segment 1's text is exactly this>",
       "segments": [
         {{
           "text": "<spoken line for this scene>",
@@ -592,7 +677,7 @@ def generate_script_prompt2(topic_spec):
     }}
 
     Rules:
-    - CRITICAL WORD COUNT: the TOTAL words across all 'text' fields combined must be BETWEEN 105 AND 135 (that is {int(TARGET_MIN_S)}-{int(TARGET_MAX_S)} seconds spoken). Under 95 words is rejected as too short; over 140 is rejected as too long. Count before you answer. Short, punchy sentences — roughly 15-20 words per 8-second scene.
+    - CRITICAL WORD COUNT: the TOTAL words across all 'text' fields combined must be BETWEEN 105 AND 135 (that is {int(TARGET_MIN_S)}-{int(TARGET_MAX_S)} seconds spoken). Under 95 words is rejected as too short; over 140 is rejected as too long. Count before you answer. Short, punchy sentences — about 12 words for a 6-second scene, 16 for 8 seconds, 20 for 10. The clip is cut to the line's length, so a line much shorter than its scene leaves dead air.
     - Write about the topic presented in the video.
     - Keep your response concise (maximum 8 segments) so that the JSON does not get truncated.
     - Every scene's "seconds" must be exactly 4, 6, 8 or 10. No other value —
@@ -694,51 +779,72 @@ def generate_script_prompt2(topic_spec):
     - "sfx" lists spot effects with the second each lands on, relative to the
       start of THIS scene. One or two, in the places a cut or a movement wants
       punctuation. Leave the array empty rather than inventing filler.
-    - "voice" is direction for the narrator: pace, weight, the word that lifts.
+    - "voice" names only the word that carries the emphasis. The narrator is
+      the SAME man at the SAME calm pace and pitch in every scene: never ask
+      for a different tone, energy or mood per scene — each clip is voiced
+      separately, and a per-scene tone change is heard as a different person.
     - "mix" is levels. Narration always in front of music.
     - Describe sound that belongs to the place or the object. Never name a
       track, an artist, a song or a library cue.
     """
 
-    contents = [video_file_obj, prompt] if video_file_obj else [prompt]
+    # The validator's reasons are precise ("scenes [3, 7] start cold", "the hook
+    # promises four parts but never counts them"). Hand them back and retry the
+    # SAME topic, instead of spending the next competitor video to learn it.
+    correction = ""
+    for script_try in range(1, STORY_RETRIES + 1):
+        full = prompt + (f"""
 
-    try:
-        response, model = model_client.call_model(
-            lambda m: client.models.generate_content(
-                model=m,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    system_instruction=("You are a professional scriptwriter for geography shorts. Narration totals 105-135 words across all segments — never fewer than 95. "
-                                        + ("Write all narration (segment 'text' and 'hook'), 'caption', 'upload_title' and 'title_regional' in Hindi, Devanagari script; keep every other field in English. Every JSON key must be in double quotes. " if NARRATION_LANG == "hi" else "")
-                                        + "Always return ONLY valid JSON inside a ```json block."),
-                    max_output_tokens=8192,
-                    response_mime_type="application/json",
-                    safety_settings=[
-                        types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
-                        types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE")
-                    ]
-                )
-            ),
-            models=["gemini-3.5-flash-lite"],
-            what="Prompt 2 script",
-        )
-    except QuotaExhaustedError:
-        raise  # account-level: the run stops, it does not try another topic
-    except Exception as e:
-        raise ScriptGenerationError(
-            f"Gemini text call failed: {type(e).__name__}: {e}\n"
-            f"Check your API key."
-        ) from e
+    YOUR PREVIOUS ATTEMPT WAS REJECTED BY THE VALIDATOR:
+    > {correction}
+    Fix exactly that and return the whole JSON again.
+    """ if correction else "")
+        contents = [video_file_obj, full] if video_file_obj else [full]
 
-    content = response.text
-    if not content:
-        raise ScriptGenerationError(
-            f"Model returned an empty response"
-        )
+        try:
+            response, model = model_client.call_model(
+                lambda m: client.models.generate_content(
+                    model=m,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=("You are a professional scriptwriter for geography shorts. Narration totals 105-135 words across all segments — never fewer than 95. "
+                                            + ("Write all narration (segment 'text' and 'hook'), 'caption', 'upload_title' and 'title_regional' in Hindi, Devanagari script; keep every other field in English. Every JSON key must be in double quotes. " if NARRATION_LANG == "hi" else "")
+                                            + "Always return ONLY valid JSON inside a ```json block."),
+                        max_output_tokens=8192,
+                        response_mime_type="application/json",
+                        safety_settings=[
+                            types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
+                            types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
+                            types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
+                            types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE")
+                        ]
+                    )
+                ),
+                models=["gemini-3.5-flash-lite"],
+                what="Prompt 2 script",
+            )
+        except QuotaExhaustedError:
+            raise  # account-level: the run stops, it does not try another topic
+        except Exception as e:
+            raise ScriptGenerationError(
+                f"Gemini text call failed: {type(e).__name__}: {e}\n"
+                f"Check your API key."
+            ) from e
 
-    data = validate_script(_extract_json(content), topic_spec)
+        content = response.text
+        if not content:
+            raise ScriptGenerationError(
+                f"Model returned an empty response"
+            )
+
+        try:
+            data = validate_script(_extract_json(content), topic_spec)
+            break
+        except ScriptGenerationError as err:
+            if script_try == STORY_RETRIES:
+                raise
+            correction = str(err)
+            print(f"[Prompt 2] attempt {script_try} rejected — retrying with the reason: {correction[:160]}")
     print(
         f"[Prompt 2] Script for '{subject}': {len(data.get('segments', []))} scenes, "
         f"est. audio {data.get('estimated_audio_s')}s, "

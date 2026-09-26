@@ -378,12 +378,36 @@ def submit(page, prompt, seconds):
     return False
 
 
+def stamp_tiles(page, n):
+    """Label the newest n tiles with their clip number in one atomic JS pass.
+    The grid is newest-first, so tile i of the first n is clip (n-1-i). Only stamps
+    when at least n tiles are rendered; otherwise existing stamps are kept."""
+    try:
+        return page.evaluate(
+            """([sel, n]) => { const els = document.querySelectorAll(sel);
+                 if (els.length < n) return els.length;
+                 for (let i = 0; i < n; i++) els[i].setAttribute('data-dgm-clip', String(n - 1 - i));
+                 return els.length; }""", [TILE_SEL, n])
+    except Exception:
+        return -1
+
+
+def file_sha1(path):
+    import hashlib
+    h = hashlib.sha1()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 CREDITS_EXHAUSTED = False
 
 
 def run_batch(page, context, clips):
     """Queue EVERY clip first, then wait for all of them together and download each.
-    Grid is newest-first, so in a fresh project clip k sits at index (n-1-k)."""
+    Grid is newest-first; tiles are stamped with their clip number (stamp_tiles)
+    and downloads are checked for duplicates before they count as saved."""
     queued = []
     global CREDITS_EXHAUSTED
     for k, c in enumerate(clips, 1):
@@ -415,23 +439,36 @@ def run_batch(page, context, clips):
     saved, retries = set(), {}
     deadline = time.time() + max(TIMEOUT, 150 * n)
     log(f"all {n} queued — waiting for Flow to finish them together")
+    hashes = {}                                   # clip k -> sha1 of its saved file
     while time.time() < deadline and len(saved) < n:
         time.sleep(15)
-        total = tiles.count()
+        stamp_tiles(page, n)
         states = []
         for k, c in enumerate(queued):
             if k in saved:
                 states.append("saved"); continue
-            idx = total - 1 - k
-            if idx < 0:
+            # Target the tile by the clip number stamped on it, never by a position
+            # counted earlier: Flow's grid is virtualised, so tiles leave and re-enter
+            # the DOM while we scroll, and a stale nth() silently lands on the
+            # neighbouring clip (that is how scene 1 ended up in 01 AND 02).
+            tile = page.locator(f"[data-dgm-clip='{k}']").first
+            if page.locator(f"[data-dgm-clip='{k}']").count() == 0:
                 states.append("?"); continue
-            tile = tiles.nth(idx)
             st = tile_state(tile)
             states.append(st)
             out = Path(c["out"]); out.parent.mkdir(parents=True, exist_ok=True)
             if st == "done":
                 page.wait_for_timeout(1500)
                 if save_clip(page, context, tile, out):
+                    h = file_sha1(out)
+                    dup = [j for j, hh in hashes.items() if hh == h and j != k]
+                    if dup:
+                        log(f"REJECTED {out.name}: identical to clip {dup[0]+1:02d}.mp4 "
+                            f"(wrong tile) — will fetch again")
+                        try: out.unlink()
+                        except Exception: pass
+                        continue
+                    hashes[k] = h
                     saved.add(k); log(f"saved {out.name}")
                 else:
                     log(f"DOWNLOAD FAILED {out.name}")
