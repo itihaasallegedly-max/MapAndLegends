@@ -33,6 +33,10 @@ from pipeline_errors import AssetGenerationError  # noqa: E402
 from utils.audio_estimation import estimate_audio_duration  # noqa: E402
 
 W, H, FPS = 1080, 1920, 30
+# Every reel is made in each of these, as its own Flow batch: 9:16 for Shorts
+# and Reels, 16:9 as a regular YouTube video and an Instagram post.
+SIZES = {"9:16": (1080, 1920), "16:9": (1920, 1080)}
+ASPECTS = [a.strip() for a in os.getenv("ASPECTS", "9:16,16:9").split(",") if a.strip() in SIZES] or ["9:16"]
 FLOW_MAX_S = 10.0
 FLOW_TIMEOUT = int(os.getenv("FLOW_RUN_TIMEOUT", "3600"))   # whole batch, seconds
 NARRATION_LANG = os.getenv("NARRATION_LANG", "hi").strip().lower()
@@ -62,7 +66,7 @@ FLOW_MUSIC = os.getenv("FLOW_MUSIC", "0").strip().lower() in ("1", "true", "yes"
 MUSIC_STYLE = os.getenv("FLOW_MUSIC_STYLE",
     "one slow, calm ambient string pad in a minor key with a soft low piano note now and then, "
     "no drums, no beat, no melody that competes with the voice, the SAME music in every clip")
-NEG = ("full-bleed edge-to-edge vertical frame, no border, no letterbox, no on-screen "
+NEG = ("full-bleed edge-to-edge {orient} frame, no border, no letterbox, no on-screen "
        "text, no captions, no subtitles, no watermark, no logos")
 
 
@@ -136,14 +140,16 @@ def _position(i, n):
             "no pause to start, and no closing or final tone at the end.")
 
 
-def build_prompt(seg, style="", index=1, total=1, seconds=None, music_style=None):
+def build_prompt(seg, style="", index=1, total=1, seconds=None, music_style=None, aspect="9:16"):
     """One Flow prompt. The narration block goes FIRST: text-to-video models
     weight the start of a prompt, and the narration is what has to carry across
     clips; the picture only has to carry within one."""
     seconds = int(seconds or clip_seconds(seg))
     text = spoken_line(seg)
     lang = "Hindi" if NARRATION_LANG == "hi" else "English"
-    parts = ["Vertical 9:16.", f"{seconds}-second clip."]
+    wide = aspect == "16:9"
+    parts = ["Horizontal 16:9 widescreen, composed for the full width of a landscape frame."
+             if wide else "Vertical 9:16.", f"{seconds}-second clip."]
     if text:
         speak_by = max(1.0, seconds - 0.5)
         parts.append(
@@ -161,7 +167,7 @@ def build_prompt(seg, style="", index=1, total=1, seconds=None, music_style=None
         parts.append(f"Background: {bg['description']}")
     if style:
         parts.append(f"Visual style: {style}.")
-    parts.append(NEG + ".")
+    parts.append(NEG.format(orient="horizontal" if wide else "vertical") + ".")
     audio = seg.get("audio") or {}
     sound, fxs = [], []
     if isinstance(audio, dict):
@@ -191,12 +197,13 @@ def build_prompt(seg, style="", index=1, total=1, seconds=None, music_style=None
     return re.sub(r"\s+", " ", " ".join(parts)).strip()
 
 
-def build_job(script_data, output_dir, slug):
+def build_job(script_data, output_dir, slug, aspect="9:16"):
     segments = script_data.get("segments") or []
     if not segments:
         raise AssetGenerationError("script has no segments")
     style = os.getenv("VIDEO_STYLE", "").strip()
-    flow_dir = Path(output_dir) / ("flow_music" if FLOW_MUSIC else "flow")
+    flow_dir = Path(output_dir) / (("flow_music" if FLOW_MUSIC else "flow")
+                                   + ("_169" if aspect == "16:9" else ""))
     flow_dir.mkdir(parents=True, exist_ok=True)
     n = len(segments)
     clips = []
@@ -209,11 +216,13 @@ def build_job(script_data, output_dir, slug):
                        ", no vocals, the SAME music in every clip")
     for i, seg in enumerate(segments, 1):
         secs = clip_seconds(seg)
-        clips.append({"prompt": build_prompt(seg, style, index=i, total=n, seconds=secs, music_style=music_style),
+        clips.append({"prompt": build_prompt(seg, style, index=i, total=n, seconds=secs, music_style=music_style, aspect=aspect),
                       "seconds": secs,
                       "out": str(flow_dir / f"{i:02d}.mp4")})
     job_path = Path(naming.path(output_dir, slug, "flow_job"))
-    job_path.write_text(json.dumps({"aspect": "9:16", "clips": clips},
+    if aspect == "16:9":
+        job_path = job_path.with_name(job_path.name.replace("_flow_job", "_flow_job_169"))
+    job_path.write_text(json.dumps({"aspect": aspect, "clips": clips},
                                    ensure_ascii=False, indent=1), encoding="utf-8")
     return job_path, clips
 
@@ -231,7 +240,7 @@ def run_flow(job_path):
 
 # ------------------------------------------------------------------ stitch
 
-def _handle_overlay(path):
+def _handle_overlay(path, size=(W, H)):
     """A small channel-handle footer, or None if there is no handle / no Pillow."""
     handle = os.getenv("CHANNEL_HANDLE", "").strip()
     if not handle:
@@ -240,7 +249,8 @@ def _handle_overlay(path):
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
         return None
-    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    w, h = size
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     font = None
     for f in ("/System/Library/Fonts/Supplemental/Arial Bold.ttf",
@@ -251,7 +261,7 @@ def _handle_overlay(path):
             break
     font = font or ImageFont.load_default()
     tw = d.textlength(handle, font=font)
-    d.text(((W - tw) / 2, H - 120), handle, font=font, fill=(217, 169, 76, 235),
+    d.text(((w - tw) / 2, h - (120 if h > w else 80)), handle, font=font, fill=(217, 169, 76, 235),
            stroke_width=3, stroke_fill=(10, 23, 40, 200))
     img.save(path)
     return path
@@ -323,12 +333,13 @@ def keep_window(src, d):
     return a, z - a
 
 
-def stitch(clip_paths, reel_path, work_dir):
-    work = Path(work_dir) / "_stitch"
+def stitch(clip_paths, reel_path, work_dir, size=(W, H)):
+    sw, sh = size
+    work = Path(work_dir) / f"_stitch_{sw}x{sh}"
     if work.exists():
         shutil.rmtree(work, ignore_errors=True)
     work.mkdir(parents=True)
-    overlay = _handle_overlay(work / "handle.png")
+    overlay = _handle_overlay(work / "handle.png", size)
 
     vids, auds, total = [], [], 0.0
     for k, src in enumerate(clip_paths, 1):
@@ -339,7 +350,7 @@ def stitch(clip_paths, reel_path, work_dir):
         ss, keep = keep_window(src, d)
         total += keep
         v, a = work / f"v{k:02d}.mp4", work / f"a{k:02d}.wav"
-        base = f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={FPS},setsar=1"
+        base = f"[0:v]scale={sw}:{sh}:force_original_aspect_ratio=increase,crop={sw}:{sh},fps={FPS},setsar=1"
         if overlay:
             cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-i", str(overlay),
                    "-filter_complex", f"{base}[b];[b][1:v]overlay=0:0,format=yuv420p[o]", "-map", "[o]"]
@@ -394,13 +405,13 @@ def stitch(clip_paths, reel_path, work_dir):
     _run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mute), "-i", str(nar),
           "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
           "-ar", "44100", "-ac", "2", "-movflags", "+faststart", "-shortest", str(tmp)])
-    verify_reel(tmp, total)
+    verify_reel(tmp, total, size)
     tmp.replace(reel_path)       # the reel only appears once it is whole and checked
     shutil.rmtree(work, ignore_errors=True)
     return reel_path
 
 
-def verify_reel(path, expected_s):
+def verify_reel(path, expected_s, size=(W, H)):
     out = _run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,width,height",
                 "-of", "json", str(path)])
     streams = json.loads(out).get("streams", [])
@@ -408,17 +419,17 @@ def verify_reel(path, expected_s):
     if not {"video", "audio"} <= kinds:
         raise AssetGenerationError(f"reel is missing a stream: {sorted(kinds)}")
     v = next(s for s in streams if s.get("codec_type") == "video")
-    if (v.get("width"), v.get("height")) != (W, H):
-        raise AssetGenerationError(f"reel is {v.get('width')}x{v.get('height')}, not {W}x{H}")
+    if (v.get("width"), v.get("height")) != tuple(size):
+        raise AssetGenerationError(f"reel is {v.get('width')}x{v.get('height')}, not {size[0]}x{size[1]}")
     got = probe_duration(path)
     if abs(got - expected_s) > 1.5:
         raise AssetGenerationError(f"reel is {got:.1f}s, clips add up to {expected_s:.1f}s")
-    log(f"verified {path.name}: {got:.1f}s {W}x{H} with audio")
+    log(f"verified {path.name}: {got:.1f}s {size[0]}x{size[1]} with audio")
 
 
 # ------------------------------------------------------------------ entry
 
-def render_reel(script_data, output_dir, slug):
+def render_reel(script_data, output_dir, slug, aspect="9:16"):
     """Flow -> download -> stitch. Returns the reel path or raises AssetGenerationError."""
     if NARRATION_LANG == "hi":
         english = [i for i, sg in enumerate(script_data.get("segments") or [])
@@ -427,9 +438,9 @@ def render_reel(script_data, output_dir, slug):
             raise AssetGenerationError(
                 f"script narration is not Hindi (segments {english}) — it was written before "
                 f"NARRATION_LANG=hi; regenerate it rather than voice English as Hindi")
-    job_path, clips = build_job(script_data, output_dir, slug)
+    job_path, clips = build_job(script_data, output_dir, slug, aspect)
     missing = [c for c in clips if not Path(c["out"]).exists()]
-    log(f"{len(clips)} scene(s), {len(missing)} still to generate in Flow")
+    log(f"[{aspect}] {len(clips)} scene(s), {len(missing)} still to generate in Flow")
     if missing:
         rc = run_flow(job_path)
         still = [c["out"] for c in clips if not Path(c["out"]).exists()]
@@ -439,10 +450,16 @@ def render_reel(script_data, output_dir, slug):
             raise AssetGenerationError(
                 f"{len(still)}/{len(clips)} clip(s) not downloaded ({code}); "
                 f"the {len(clips) - len(still)} on disk are kept for --resume")
-    reel = naming.path(output_dir, slug, "reel")
+    reel = reel_path_for(output_dir, slug, aspect)
     if os.getenv("FLOW_REEL_SUFFIX"):
         reel = str(reel).replace(".mp4", os.getenv("FLOW_REEL_SUFFIX") + ".mp4")
-    return str(stitch([c["out"] for c in clips], reel, output_dir))
+    return str(stitch([c["out"] for c in clips], reel, output_dir, SIZES[aspect]))
+
+
+def reel_path_for(output_dir, slug, aspect="9:16"):
+    """<slug>_reel.mp4 for 9:16 (unchanged), <slug>_reel_169.mp4 for 16:9."""
+    p = naming.path(output_dir, slug, "reel")
+    return p if aspect == "9:16" else p.replace("_reel.mp4", "_reel_169.mp4")
 
 
 if __name__ == "__main__":
@@ -451,7 +468,8 @@ if __name__ == "__main__":
     #   — A/B test: same script, music from Flow, written beside the published reel
     if len(sys.argv) < 2:
         sys.exit("usage: core/flow_stitch.py <slug>")
+    # add --169 to render the 16:9 version
     s = sys.argv[1]
     od = BASE_DIR / "outputs" / s
     with open(naming.path(od, s, "script"), encoding="utf-8") as f:
-        print(render_reel(json.load(f), str(od), s))
+        print(render_reel(json.load(f), str(od), s, "16:9" if "--169" in sys.argv else "9:16"))

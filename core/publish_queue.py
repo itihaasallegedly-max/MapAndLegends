@@ -22,7 +22,7 @@ import naming  # noqa: E402
 
 OUTPUTS = os.path.join(BASE_DIR, "outputs")
 BACKOFF_H = (1, 4, 12, 24, 24)
-ALL_PLATFORMS = ("youtube", "instagram")
+ALL_PLATFORMS = ("youtube", "instagram", "youtube_169", "instagram_169")
 
 
 def _now():
@@ -56,7 +56,11 @@ def pending_platforms(state):
 def record(slug, reel, result):
     """Merge one publish attempt's result into the reel's state and schedule retries."""
     state = load(slug) or {"reel": reel, "platforms": {}, "abandoned": False}
-    state["reel"] = reel
+    # reel: the 9:16 path, or {"9:16": path, "16:9": path}. "reel" stays the
+    # 9:16 path so older readers keep working; "reels" carries both.
+    reels = reel if isinstance(reel, dict) else {"9:16": reel}
+    state["reels"] = {**state.get("reels", {}), **{a: p for a, p in reels.items() if p}}
+    state["reel"] = state["reels"].get("9:16") or state.get("reel")
     for platform in ALL_PLATFORMS:
         r = result.get(platform)
         if not isinstance(r, dict):

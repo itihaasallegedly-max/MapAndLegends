@@ -78,7 +78,7 @@ IG_POLL_SECONDS = 15
 
 # ------------------------------------------------------------------ metadata
 
-def build_metadata(script_data):
+def build_metadata(script_data, landscape=False):
     """Title, description and tags from the script. No platform calls.
 
     Prefers the SEO fields Prompt 2 now writes (upload_title, upload_hashtags);
@@ -104,10 +104,15 @@ def build_metadata(script_data):
             hashtags.append(tag)
     if not hashtags:
         hashtags = ["#Geography", "#Maps"]
-    if "#shorts" not in {h.lower() for h in hashtags}:
-        hashtags.insert(0, "#Shorts")
-
-    yt_title = title if "#shorts" in title.lower() else f"{title} #Shorts"
+    if landscape:
+        # The 16:9 cut is a regular video, not a Short: no #Shorts anywhere.
+        hashtags = [h for h in hashtags if h.lower() != "#shorts"] or ["#Geography", "#Maps"]
+        title = re.sub(r"\s*#shorts\b", "", title, flags=re.I).strip()
+        yt_title = title
+    else:
+        if "#shorts" not in {h.lower() for h in hashtags}:
+            hashtags.insert(0, "#Shorts")
+        yt_title = title if "#shorts" in title.lower() else f"{title} #Shorts"
     return {
         "youtube_title": yt_title[:100],
         "description": (f"{body}\n\n{' '.join(hashtags)}").strip()[:4900],
@@ -118,7 +123,7 @@ def build_metadata(script_data):
 
 # ------------------------------------------------------------------- youtube
 
-def upload_to_youtube(video_path, script_data):
+def upload_to_youtube(video_path, script_data, landscape=False):
     """Resumable upload via the YouTube Data API. Returns the video ID."""
     try:
         from google.auth.transport.requests import Request
@@ -133,7 +138,7 @@ def upload_to_youtube(video_path, script_data):
         ) from e
 
     creds = youtube_credentials()
-    meta = build_metadata(script_data)
+    meta = build_metadata(script_data, landscape)
     youtube = build("youtube", "v3", credentials=creds, cache_discovery=False)
     assert_channel(youtube)
     body = {
@@ -168,7 +173,7 @@ def upload_to_youtube(video_path, script_data):
     video_id = response.get("id")
     if not video_id:
         raise PublishError(f"YouTube accepted the upload but returned no id: {response!r}")
-    print(f"[Uploader] YouTube live: https://youtube.com/shorts/{video_id}")
+    print(f"[Uploader] YouTube live: https://youtube.com/{'watch?v=' if landscape else 'shorts/'}{video_id}")
     return video_id
 
 
@@ -371,7 +376,7 @@ def _ig_publish_via_url(video_path, meta, ig_user_id, access_token, root, attemp
     raise PublishError(f"Instagram failed on {attempts} hosts; last status {last}")
 
 
-def upload_to_instagram(video_path, script_data):
+def upload_to_instagram(video_path, script_data, landscape=False):
     """Reels via the resumable upload protocol. Returns the published media ID.
 
     Three steps, all of which used to be a print statement:
@@ -386,7 +391,7 @@ def upload_to_instagram(video_path, script_data):
 
     root = graph_root(access_token)
     assert_instagram_account(access_token)
-    meta = build_metadata(script_data)
+    meta = build_metadata(script_data, landscape)
     size = os.path.getsize(video_path)
     if root == IG_GRAPH_ROOT:   # Instagram-Login token: no resumable upload, needs a public URL
         return _ig_publish_via_url(video_path, meta, ig_user_id, access_token, root)
@@ -464,26 +469,30 @@ def upload_to_instagram(video_path, script_data):
 
 # ---------------------------------------------------------------- orchestrate
 
-PLATFORMS = (("youtube", "upload_to_youtube"), ("instagram", "upload_to_instagram"))
+# (platform key, uploader, aspect). The 16:9 cut is published as its own
+# video on each platform, tracked and retried separately from the 9:16 one.
+PLATFORMS = (("youtube", "upload_to_youtube", "9:16"), ("instagram", "upload_to_instagram", "9:16"),
+             ("youtube_169", "upload_to_youtube", "16:9"), ("instagram_169", "upload_to_instagram", "16:9"))
 
 
 def publish_video(video_path, script_data, platforms=None):
-    """Publish to each platform (or only those named). Reports what happened on each.
-
-    Never raises for a single platform failure — a Reel that went live
-    should not be rolled back because YouTube's token expired — but the
-    returned dict tells the caller the truth, and the caller decides.
-    """
-    if not os.path.exists(video_path):
+    """video_path is the 9:16 reel, or {"9:16": path, "16:9": path}. A platform
+    whose aspect has no file is skipped (not recorded, so not retried)."""
+    reels = video_path if isinstance(video_path, dict) else {"9:16": video_path}
+    reels = {a: p for a, p in reels.items() if p and os.path.exists(p)}
+    if not reels:
         raise PublishError(f"No video at {video_path}")
 
     results = {}
-    for platform, fn_name in PLATFORMS:
+    for platform, fn_name, aspect in PLATFORMS:
         if platforms is not None and platform not in platforms:
             continue
+        if aspect not in reels:
+            continue
         try:
-            results[platform] = {"published": True,
-                                 "id": globals()[fn_name](video_path, script_data), "error": None}
+            results[platform] = {"published": True, "error": None,
+                                 "id": globals()[fn_name](reels[aspect], script_data,
+                                                          landscape=(aspect == "16:9"))}
         except Exception as e:
             msg = re.sub(r"access_token=[^&\s'\"]+", "access_token=***", f"{type(e).__name__}: {e}")
             results[platform] = {"published": False, "id": None, "error": msg}

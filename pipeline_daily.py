@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 
 from core import performance
 from core import publish_queue
-from core.flow_stitch import render_reel
+from core.flow_stitch import render_reel, reel_path_for, ASPECTS
 from pipeline_errors import (
     AssetGenerationError,
     ConfigError,
@@ -338,6 +338,25 @@ def run_render_pipeline(slug, generate_only=False):
             })
             return None
 
+    # The 16:9 cut: its own Flow batch, same script. A failure here never
+    # holds back the 9:16 reel.
+    reels = {"9:16": reel_path}
+    if "16:9" in ASPECTS:
+        wide = reel_path_for(output_dir, slug, "16:9")
+        if os.path.exists(wide):
+            print(f"[render] 16:9 already on disk: {wide}")
+            reels["16:9"] = wide
+        else:
+            try:
+                reels["16:9"] = render_reel(script_data, output_dir, slug, "16:9")
+            except AssetGenerationError as e:
+                print(f"\n!! 16:9 render failed — this topic goes out in 9:16 only: {e}")
+                _append_jsonl(RUNS_FILE, {
+                    "started": started.isoformat(timespec="seconds"),
+                    "outcome": "render_169_failed", "topic": topic_spec["topic"],
+                    "slug": slug, "error": str(e),
+                })
+
     if generate_only:
         return _finish(started, topic_spec, reel_path, None, [], generate_only=True)
 
@@ -348,8 +367,8 @@ def run_render_pipeline(slug, generate_only=False):
         publish_queue.cleanup_published(slug)
         return reel_path
     from core.uploader import publish_video
-    result = publish_video(reel_path, script_data, platforms=todo)
-    state = publish_queue.record(slug, reel_path, result)
+    result = publish_video(reels, script_data, platforms=todo)
+    state = publish_queue.record(slug, reels, result)
     left = publish_queue.pending_platforms(state)
     if left:
         print(f"[publish] queued for retry: {', '.join(left)}")

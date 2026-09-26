@@ -27,7 +27,7 @@ def main():
     from core.uploader import publish_video
     for slug in slugs:
         state = publish_queue.load(slug)
-        reel = state.get("reel")
+        reel = state.get("reels") or state.get("reel")
         todo = publish_queue.pending_platforms(state)
         out_dir = os.path.join(BASE_DIR, "outputs", slug)
         try:
