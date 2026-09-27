@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-from core import model_client, sound_map
+from core import model_client, sound_map, narration_map
 from pipeline_errors import ConfigError, QuotaExhaustedError, ScriptGenerationError
 from utils.frame_extractor import extract_frames_base64
 
@@ -86,6 +86,23 @@ HINDI_BRIEF = """
     - "title_regional" is the title in Hindi (Devanagari).
 """
 
+
+# NARRATION_MODE=faithful (default, 27 Sep 2026): the competitor's narration is
+# transcribed line by line (core/narration_map.py) and TRANSLATED into Hindi —
+# same lines, same order, nothing added or dropped. Our own story rules (hook,
+# linking words, payoff) do not apply then: their script is the script.
+# NARRATION_MODE=free restores the old "write your own story" behaviour.
+NARRATION_MODE = os.getenv("NARRATION_MODE", "faithful").strip().lower()
+MAX_DROPPED_LINES = 0.10     # on the last try, accept at most 10% of their lines missing
+
+HINDI_FAITHFUL_BRIEF = HINDI_BRIEF.replace(
+    """Understand the
+    content, then WRITE the narration yourself in natural spoken Hindi — do not
+    translate line by line.""",
+    """Their narration is
+    transcribed below, line by line. TRANSLATE it into natural spoken Hindi —
+    fluent, the way a Hindi narrator would say it, but every line and every
+    piece of information kept, in their order.""")
 
 STORY_RETRIES = int(os.getenv("PROMPT2_STORY_RETRIES", "3"))
 STORY_BRIEF = """
@@ -288,7 +305,7 @@ def _dump_raw(raw, err):
         pass
 
 
-def validate_script(data, topic_spec, window=None):
+def validate_script(data, topic_spec, window=None, faithful=False):
     """Enforce the contract. Returns the script; raises on any violation."""
     missing = [k for k in REQUIRED_KEYS if k not in data]
     if missing:
@@ -325,7 +342,15 @@ def validate_script(data, topic_spec, window=None):
     # (Previously scene_grammar.apply was called here. Now we just trust the model's segments)
     data["segments"] = segments
 
-    check_story(segments, data.get("hook", ""))
+    if faithful:
+        # Their narration is the script: only the hook must open segment 1.
+        first, h = _norm(segments[0].get("text", "")), _norm(data.get("hook", ""))
+        if h and h not in first and first not in h:
+            raise ScriptGenerationError(
+                f"Segment 1's text must start with the hook (your translation of N1). The hook "
+                f"was \"{data.get('hook')}\" but segment 1 says \"{segments[0].get('text', '')}\".")
+    else:
+        check_story(segments, data.get("hook", ""))
 
     if NARRATION_LANG == "hi":
         roman = [i for i, sg in enumerate(segments) if not DEVANAGARI.search(str(sg.get("text", "")))]
@@ -344,7 +369,7 @@ def validate_script(data, topic_spec, window=None):
     
     # No maximum anywhere. The only length check: a remake that runs well
     # short of the video it remakes has dropped content, so send it back.
-    if window and estimated_audio_s < window[0] * SHORT_TOLERANCE:
+    if window and not faithful and estimated_audio_s < window[0] * SHORT_TOLERANCE:
         need = int(window[0] * WORDS_PER_S)
         raise ScriptGenerationError(
             f"Script is too short for the competitor video it remakes: estimated audio "
@@ -647,6 +672,16 @@ def generate_script_prompt2(topic_spec):
         for e in sm["events"]:
             print(f"[SoundMap]   {e['id']} {e['at']:>5}s {e['loudness']:<6} {e['sound']}")
 
+    nm = None
+    if NARRATION_MODE == "faithful":
+        nm = narration_map.extract(client, video_file_obj,
+                                   call_model=model_client.call_model, types=types)
+        if nm:
+            print(f"[NarrationMap] {len(nm['lines'])} line(s), {nm['words']} words, {nm['language']}")
+            for ln in nm["lines"]:
+                print(f"[NarrationMap]   {ln['id']:>4} {ln['start']:>5}-{ln['end']:<5}s {ln['text'][:90]}")
+    faithful = bool(nm)
+
     competitor_s = float((sm or {}).get("duration_s") or 0) or _probe_seconds(
         topic_spec.get("downloaded_video_path"))
     window = runtime_window(competitor_s)
@@ -665,11 +700,30 @@ def generate_script_prompt2(topic_spec):
         scenes_rule = (f"Use as many scenes as the content needs — roughly {int(math.ceil(lo / 8))} to "
                        f"{int(math.ceil(hi / 6))} at this length, more if needed. There is no scene limit.")
         sys_length = f"Match the competitor's length: about {w_lo}-{w_hi} words of narration, no maximum. "
-    else:
+    if faithful:
+        words_rule = ("WORD COUNT: whatever a faithful Hindi translation of EVERY competitor line "
+                      "needs — no limit, nothing cut to save words.")
+        sys_length = ("Translate the competitor's narration line by line into Hindi: every line, "
+                      "in order, nothing added, nothing dropped. ")
+    if not window:
         length_brief = "LENGTH: no fixed length. Tell the whole topic; the content decides how long it runs."
-        words_rule = "WORD COUNT: no limit — as many words as the topic needs."
         scenes_rule = "Use as many scenes as the content needs. There is no scene limit."
-        sys_length = "There is no length limit; the content decides. "
+        if not faithful:
+            words_rule = "WORD COUNT: no limit — as many words as the topic needs."
+            sys_length = "There is no length limit; the content decides. "
+    refs_field = ('"narration_refs": ["<ids of the competitor lines this scene translates, e.g. N3, N4>"],'
+                  if faithful else "")
+    competitor_rule = (
+        "WATCH THE ATTACHED COMPETITOR VIDEO. You must replicate its visuals EXACTLY frame-by-frame. "
+        "The narration is THEIR narration, translated (see THE COMPETITOR'S NARRATION above). "
+        "For each segment, your 'video_prompt' and 'per_second' visual breakdowns must match what is "
+        "on screen in their video while those lines are spoken."
+        if faithful else
+        "WATCH THE ATTACHED COMPETITOR VIDEO. You must replicate its visuals EXACTLY frame-by-frame. "
+        "For the script, use their spoken audio as a baseline but adapt it into your own words (some "
+        "creators speak artificially fast; do not transcribe them word-for-word), keeping every item "
+        "and beat they cover. For each segment, your 'video_prompt' and 'per_second' visual "
+        "breakdowns must match the competitor's visual sequence.") if video_file_obj else ""
 
     prompt = f"""
     You write scripts for vertical geography videos aimed at an Indian audience,
@@ -677,13 +731,14 @@ def generate_script_prompt2(topic_spec):
 
     YOUR TOPIC IS: "{subject}"
     {set_brief(topic_spec)}
-    {HINDI_BRIEF if NARRATION_LANG == "hi" else ""}
-    {STORY_BRIEF}
+    {(HINDI_FAITHFUL_BRIEF if faithful else HINDI_BRIEF) if NARRATION_LANG == "hi" else ""}
+    {"" if faithful else STORY_BRIEF}
+    {narration_map.brief(nm, NARRATION_LANG)}
     {sound_map.brief(sm)}
 
     {length_brief}
 
-    {"WATCH THE ATTACHED COMPETITOR VIDEO. You must replicate its visuals EXACTLY frame-by-frame. For the script, use their spoken audio as a baseline but adapt it into your own words (some creators speak artificially fast; do not transcribe them word-for-word), keeping every item and beat they cover. For each segment, your 'video_prompt' and 'per_second' visual breakdowns must match the competitor's visual sequence." if video_file_obj else ""}
+    {competitor_rule}
 
     VISUAL STYLE TO EMULATE:
     {dynamic_style}
@@ -698,6 +753,7 @@ def generate_script_prompt2(topic_spec):
         {{
           "text": "<spoken line for this scene>",
           "speaker": "NARRATOR (V.O.)",
+          {refs_field}
           "seconds": 8,
           "video_prompt": "<the one continuous shot, in a sentence or two>",
           "per_second": [
@@ -905,7 +961,18 @@ def generate_script_prompt2(topic_spec):
             )
 
         try:
-            data = validate_script(_extract_json(content), topic_spec, window)
+            data = validate_script(_extract_json(content), topic_spec, window, faithful)
+            if nm:
+                dropped = narration_map.missing(data["segments"], nm)
+                problem = narration_map.order_problem(data["segments"], nm)
+                if (dropped or problem) and script_try < STORY_RETRIES:
+                    raise ScriptGenerationError(narration_map.reason(dropped, problem))
+                if len(dropped) > MAX_DROPPED_LINES * len(nm["lines"]):
+                    raise ScriptGenerationError(narration_map.reason(dropped, problem))
+                if dropped or problem:
+                    print(f"[NarrationMap] accepted with {len(dropped)} line(s) not referenced"
+                          + (f"; {problem}" if problem else ""))
+                data["narration_map"] = nm
             miss = sound_map.missing(data["segments"], sm)
             if miss and script_try < STORY_RETRIES:
                 raise ScriptGenerationError(sound_map.missing_reason(miss))
