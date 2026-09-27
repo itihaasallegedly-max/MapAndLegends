@@ -353,6 +353,83 @@ def set_duration(page, seconds):
     return want
 
 
+import re as _re
+MARKER_RE = _re.compile(r"This is clip (\d+) of (\d+)")
+
+
+def clip_marker(prompt):
+    """(clip number, of n) from the prompt's own text, or None.
+
+    Every prompt flow_stitch writes says "This is clip i of n", and Flow shows
+    the prompt inside its tile — so a tile says which clip it is. Positions do
+    not: the grid is VIRTUALISED (about 9 tiles in the DOM at once), a Retry
+    moves tiles, and on 27 Sep an 11-clip batch was stamped by position and
+    every saved file was the wrong clip."""
+    m = MARKER_RE.search(prompt or "")
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+STAMP_JS = """([sel, total]) => {
+  const re = /This is clip (\\d+) of (\\d+)/;
+  const seen = new Set(); let found = 0;
+  for (const el of document.querySelectorAll(sel)) {
+    // the prompt text sits beside the tile, not inside it: climb to the
+    // smallest ancestor that holds exactly one marker (the tile's grid item)
+    let m = null;
+    for (let a = el, lvl = 0; a && lvl < 10; a = a.parentElement, lvl++) {
+      const all = (a.textContent || '').match(/This is clip \\d+ of \\d+/g) || [];
+      if (all.length === 1) { m = re.exec(all[0]); break; }
+      if (all.length > 1) break;
+    }
+    if (!m || Number(m[2]) !== total) { el.removeAttribute('data-dgm-clip'); continue; }
+    // newest-first grid: the first tile for a clip is its latest attempt
+    if (seen.has(m[1])) { el.setAttribute('data-dgm-clip', 'old-' + m[1]); continue; }
+    seen.add(m[1]); el.setAttribute('data-dgm-clip', m[1]); found++;
+  }
+  return found; }"""
+
+
+def stamp_by_marker(page, total):
+    try:
+        return page.evaluate(STAMP_JS, [TILE_SEL, total])
+    except Exception:
+        return -1
+
+
+def _scroll_grid(page, to=None, step=None):
+    """Scroll the tile grid's scroll container (or the window). Returns True if it moved."""
+    return page.evaluate("""([sel, to, step]) => {
+      const t = document.querySelector(sel); let el = t && t.parentElement;
+      while (el && !(el.scrollHeight > el.clientHeight + 10 &&
+             /(auto|scroll)/.test(getComputedStyle(el).overflowY))) el = el.parentElement;
+      el = el || document.scrollingElement;
+      const before = el.scrollTop;
+      if (to !== null) el.scrollTop = to; else el.scrollTop = before + el.clientHeight * step;
+      return el.scrollTop !== before; }""", [TILE_SEL, to, step])
+
+
+def find_clip_tile(page, number, total, sweep=True):
+    """Locator for clip `number`'s newest tile, scrolling the virtualised grid if needed."""
+    loc = page.locator(f"[data-dgm-clip='{number}']")
+    stamp_by_marker(page, total)
+    if loc.count():
+        return loc.first
+    if not sweep:
+        return None
+    try:
+        _scroll_grid(page, to=0)
+        for _ in range(40):
+            page.wait_for_timeout(350)
+            stamp_by_marker(page, total)
+            if loc.count():
+                return loc.first
+            if not _scroll_grid(page, step=0.7):
+                break
+    except Exception:
+        pass
+    return None
+
+
 def submit(page, prompt, seconds):
     """Queue one generation and wait until its tile appears (Flow may cap concurrent jobs)."""
     editor = page.locator(".ProseMirror").first
@@ -364,17 +441,54 @@ def submit(page, prompt, seconds):
     page.keyboard.press("Backspace")
     editor.fill(prompt)
     page.wait_for_timeout(500)
-    for attempt in range(12):                     # up to ~6 min if Flow's queue is full
+    mk = clip_marker(prompt)
+
+    def accepted():
+        if mk:
+            try:
+                _scroll_grid(page, to=0)            # new tiles land on top
+            except Exception:
+                pass
+            stamp_by_marker(page, mk[1])
+            if page.locator(f"[data-dgm-clip='{mk[0]}']").count():
+                return True
+        try:
+            if not (editor.inner_text(timeout=2000) or "").strip():
+                return True                          # Flow clears the box when it takes a job
+        except Exception:
+            pass
+        # count only means something while the grid is not virtualising
+        return before < 8 and tiles.count() > before
+
+    for attempt in range(20):                     # up to ~15 min if Flow really is busy
         if out_of_credits(page):
             raise OutOfCredits("Google Flow says there are not enough credits for this clip")
-        page.locator("button[aria-label='Start generation']").first.click(timeout=10000)
+        try:
+            page.locator("button[aria-label='Start generation']").first.click(timeout=10000)
+        except Exception as e:
+            # a disabled button usually means the job WAS taken and the box is empty
+            if accepted():
+                log(f"queued ({want}): {prompt[:60]}…")
+                return True
+            log(f"Start button not clickable ({str(e).splitlines()[0][:60]})")
         for _ in range(30):
-            if tiles.count() > before:
+            if accepted():
                 log(f"queued ({want}): {prompt[:60]}…")
                 return True
             time.sleep(1)
-        log(f"not accepted yet (queue full?) — retrying in 30s [{attempt+1}/12]")
+        if accepted():
+            log(f"queued ({want}): {prompt[:60]}…")
+            return True
+        log(f"not accepted yet (Flow busy?) — retrying in 30s [{attempt+1}/20]")
         time.sleep(30)
+        if accepted():
+            log(f"queued ({want}): {prompt[:60]}…")
+            return True
+        try:                                           # put the prompt back before the next click
+            if not (editor.inner_text(timeout=2000) or "").strip():
+                editor.fill(prompt)
+        except Exception:
+            pass
     return False
 
 
@@ -462,7 +576,12 @@ def run_batch(page, context, clips):
     hashes = {}                                   # clip k -> sha1 of its saved file
     while time.time() < deadline and len(saved) + sum(1 for k in rejects if rejects[k] >= MAX_REJECTS) < n:
         time.sleep(15)
-        stamp_tiles(page, n, retry_order)
+        marks = [clip_marker(c["prompt"]) for c in queued]
+        by_marker = all(marks)
+        if by_marker:
+            stamp_by_marker(page, marks[0][1])
+        else:
+            stamp_tiles(page, n, retry_order)       # legacy prompts without the marker
         states = []
         for k, c in enumerate(queued):
             if k in saved:
@@ -473,9 +592,14 @@ def run_batch(page, context, clips):
             # counted earlier: Flow's grid is virtualised, so tiles leave and re-enter
             # the DOM while we scroll, and a stale nth() silently lands on the
             # neighbouring clip (that is how scene 1 ended up in 01 AND 02).
-            tile = page.locator(f"[data-dgm-clip='{k}']").first
-            if page.locator(f"[data-dgm-clip='{k}']").count() == 0:
-                states.append("?"); continue
+            if by_marker:
+                tile = find_clip_tile(page, marks[k][0], marks[k][1])
+                if tile is None:
+                    states.append("?"); continue
+            else:
+                tile = page.locator(f"[data-dgm-clip='{k}']").first
+                if page.locator(f"[data-dgm-clip='{k}']").count() == 0:
+                    states.append("?"); continue
             st = tile_state(tile)
             states.append(st)
             out = Path(c["out"]); out.parent.mkdir(parents=True, exist_ok=True)
