@@ -77,7 +77,7 @@ def extract(client, video_file_obj, video_path=None, call_model=None, types=None
     try:
         def do(m):
             cfg = types.GenerateContentConfig(response_mime_type="application/json",
-                                              max_output_tokens=4096) if types else None
+                                              max_output_tokens=16384) if types else None
             return client.models.generate_content(model=m, contents=[video_file_obj, PROMPT],
                                                   config=cfg)
         if call_model:

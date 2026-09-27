@@ -229,11 +229,17 @@ def build_job(script_data, output_dir, slug, aspect="9:16"):
 
 def run_flow(job_path):
     """Run the Flow downloader in its own process (a hung browser can be killed)."""
+    # The batch timeout grows with the clip count — a long remake is not a hang.
+    try:
+        n = len(json.loads(Path(job_path).read_text(encoding="utf-8")).get("clips") or [])
+    except (OSError, ValueError):
+        n = 0
+    timeout = max(FLOW_TIMEOUT, 300 * n)
     try:
         rc = subprocess.run([sys.executable, str(BASE_DIR / "core" / "flow_gen.py"), str(job_path)],
-                            cwd=BASE_DIR, timeout=FLOW_TIMEOUT).returncode
+                            cwd=BASE_DIR, timeout=timeout).returncode
     except subprocess.TimeoutExpired:
-        log(f"flow_gen exceeded {FLOW_TIMEOUT}s — downloaded clips are kept for the next run")
+        log(f"flow_gen exceeded {timeout}s — downloaded clips are kept for the next run")
         return 1
     return rc
 

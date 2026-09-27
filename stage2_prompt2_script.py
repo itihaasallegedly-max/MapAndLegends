@@ -8,6 +8,7 @@ import json
 import math
 import os
 import re
+import subprocess
 
 from dotenv import load_dotenv
 from google import genai
@@ -23,10 +24,39 @@ load_dotenv()
 # eight dances, eight states — cannot be told in 50 seconds; the competitor's
 # version of exactly that runs 100. Override per run:
 #   RUNTIME_TARGET_MIN_S=80 RUNTIME_TARGET_MAX_S=100 ./venv/bin/python pipeline_daily.py ...
-TARGET_MIN_S = float(os.getenv("RUNTIME_TARGET_MIN_S", "45"))
-TARGET_MAX_S = float(os.getenv("RUNTIME_TARGET_MAX_S", "60"))
-MIN_RUNTIME_S = TARGET_MIN_S - 5
-MAX_RUNTIME_S = TARGET_MAX_S + 5
+#
+# There is no fixed floor or ceiling any more (27 Sep 2026). Our length follows
+# the competitor video we are remaking: a 96-second list gets ~96 seconds, not
+# a 45-60s squeeze that drops half the members. With no competitor video there
+# is no length rule at all — the topic decides.
+WORDS_PER_S = 2.3            # Flow's Hindi read, measured: 109 words -> 47.7s
+MATCH_BAND = 0.08            # aim within +-8% of their runtime
+SHORT_TOLERANCE = 0.85       # rejected only if under 85% of theirs (items dropped)
+
+
+def _probe_seconds(path):
+    if not path:
+        return 0.0
+    try:
+        out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                              "-of", "default=nw=1:nk=1", str(path)],
+                             capture_output=True, text=True, timeout=30).stdout.strip()
+        return float(out or 0)
+    except Exception:
+        return 0.0
+
+
+def runtime_window(competitor_s):
+    """(low, high) seconds to aim for, or None when there is nothing to match.
+
+    RUNTIME_TARGET_MIN_S / RUNTIME_TARGET_MAX_S still override for one run.
+    """
+    lo, hi = os.getenv("RUNTIME_TARGET_MIN_S"), os.getenv("RUNTIME_TARGET_MAX_S")
+    if lo and hi:
+        return float(lo), float(hi)
+    if competitor_s and competitor_s > 0:
+        return competitor_s * (1 - MATCH_BAND), competitor_s * (1 + MATCH_BAND)
+    return None
 REQUIRED_KEYS = ("title", "hook", "segments", "caption", "facts")
 
 # Narration language. The competitor reels are in English; with "hi" the model
@@ -258,7 +288,7 @@ def _dump_raw(raw, err):
         pass
 
 
-def validate_script(data, topic_spec):
+def validate_script(data, topic_spec, window=None):
     """Enforce the contract. Returns the script; raises on any violation."""
     missing = [k for k in REQUIRED_KEYS if k not in data]
     if missing:
@@ -312,15 +342,15 @@ def validate_script(data, topic_spec):
     estimated_audio_s = sum(estimate_audio_duration(s.get("text", "")) for s in segments)
     total_words = sum(len(str(s.get("text", "")).split()) for s in segments)
     
-    if estimated_audio_s < MIN_RUNTIME_S:
+    # No maximum anywhere. The only length check: a remake that runs well
+    # short of the video it remakes has dropped content, so send it back.
+    if window and estimated_audio_s < window[0] * SHORT_TOLERANCE:
+        need = int(window[0] * WORDS_PER_S)
         raise ScriptGenerationError(
-            f"Script is too short: estimated audio is {estimated_audio_s:.1f}s "
-            f"({total_words} words), minimum is {MIN_RUNTIME_S}s."
-        )
-    if estimated_audio_s > MAX_RUNTIME_S:
-        raise ScriptGenerationError(
-            f"Script is too long: estimated audio is {estimated_audio_s:.1f}s "
-            f"({total_words} words), maximum is {MAX_RUNTIME_S}s."
+            f"Script is too short for the competitor video it remakes: estimated audio "
+            f"{estimated_audio_s:.1f}s ({total_words} words), theirs needs about "
+            f"{window[0]:.0f}-{window[1]:.0f}s — write about {need}+ words and cover every "
+            f"item and beat they cover, adding scenes as needed."
         )
         
     data["estimated_audio_s"] = round(estimated_audio_s, 2)
@@ -617,8 +647,32 @@ def generate_script_prompt2(topic_spec):
         for e in sm["events"]:
             print(f"[SoundMap]   {e['id']} {e['at']:>5}s {e['loudness']:<6} {e['sound']}")
 
+    competitor_s = float((sm or {}).get("duration_s") or 0) or _probe_seconds(
+        topic_spec.get("downloaded_video_path"))
+    window = runtime_window(competitor_s)
+    if window:
+        lo, hi = window
+        w_lo, w_hi = int(lo * WORDS_PER_S), int(hi * WORDS_PER_S)
+        print(f"[Prompt 2] length follows the competitor ({competitor_s:.1f}s): "
+              f"aim {lo:.0f}-{hi:.0f}s, {w_lo}-{w_hi} words")
+        length_brief = (f"LENGTH: the competitor video runs {competitor_s:.0f} seconds. Ours matches it — "
+                        f"about {lo:.0f}-{hi:.0f} seconds spoken. Cover EVERYTHING they cover: every "
+                        f"member, place and beat, in their order. Never drop an item to save time.")
+        words_rule = (f"WORD COUNT: the TOTAL words across all 'text' fields combined should be about "
+                      f"{w_lo}-{w_hi} (that is {lo:.0f}-{hi:.0f} seconds spoken). There is no maximum — "
+                      f"if their content needs more, write more. Under {int(lo * SHORT_TOLERANCE * WORDS_PER_S)} "
+                      f"words is rejected because it means content was dropped.")
+        scenes_rule = (f"Use as many scenes as the content needs — roughly {int(math.ceil(lo / 8))} to "
+                       f"{int(math.ceil(hi / 6))} at this length, more if needed. There is no scene limit.")
+        sys_length = f"Match the competitor's length: about {w_lo}-{w_hi} words of narration, no maximum. "
+    else:
+        length_brief = "LENGTH: no fixed length. Tell the whole topic; the content decides how long it runs."
+        words_rule = "WORD COUNT: no limit — as many words as the topic needs."
+        scenes_rule = "Use as many scenes as the content needs. There is no scene limit."
+        sys_length = "There is no length limit; the content decides. "
+
     prompt = f"""
-    You write scripts for {int(TARGET_MIN_S)}-{int(TARGET_MAX_S)} second vertical geography shorts aimed at an Indian audience,
+    You write scripts for vertical geography videos aimed at an Indian audience,
     including competitive-exam aspirants.
 
     YOUR TOPIC IS: "{subject}"
@@ -627,7 +681,9 @@ def generate_script_prompt2(topic_spec):
     {STORY_BRIEF}
     {sound_map.brief(sm)}
 
-    {"WATCH THE ATTACHED COMPETITOR VIDEO. You must replicate its visuals EXACTLY frame-by-frame. For the script, use their spoken audio as a baseline but adapt it to 105-135 words total (Some creators speak artificially fast; do not transcribe them word-for-word). If their video is short, ADD context, a cause or a consequence so the narration still reaches 105 words — a script under 95 words is rejected. For each segment, your 'video_prompt' and 'per_second' visual breakdowns must match the competitor's visual sequence." if video_file_obj else ""}
+    {length_brief}
+
+    {"WATCH THE ATTACHED COMPETITOR VIDEO. You must replicate its visuals EXACTLY frame-by-frame. For the script, use their spoken audio as a baseline but adapt it into your own words (some creators speak artificially fast; do not transcribe them word-for-word), keeping every item and beat they cover. For each segment, your 'video_prompt' and 'per_second' visual breakdowns must match the competitor's visual sequence." if video_file_obj else ""}
 
     VISUAL STYLE TO EMULATE:
     {dynamic_style}
@@ -689,14 +745,12 @@ def generate_script_prompt2(topic_spec):
     }}
 
     Rules:
-    - CRITICAL WORD COUNT: the TOTAL words across all 'text' fields combined must be BETWEEN 105 AND 135 (that is {int(TARGET_MIN_S)}-{int(TARGET_MAX_S)} seconds spoken). Under 95 words is rejected as too short; over 140 is rejected as too long. Count before you answer. Short, punchy sentences — about 12 words for a 6-second scene, 16 for 8 seconds, 20 for 10. The clip is cut to the line's length, so a line much shorter than its scene leaves dead air.
+    - {words_rule} Short, punchy sentences — about 12 words for a 6-second scene, 16 for 8 seconds, 20 for 10. The clip is cut to the line's length, so a line much shorter than its scene leaves dead air.
     - Write about the topic presented in the video.
-    - Keep your response concise (maximum 8 segments) so that the JSON does not get truncated.
     - Every scene's "seconds" must be exactly 4, 6, 8 or 10. No other value —
       not 5, not 12, not 15. These are the lengths a text-to-video model
       actually generates, so a scene is one generation and never a join.
-    - Plan {int(math.ceil(TARGET_MIN_S / 8))} to {int(TARGET_MAX_S // 6)} scenes, and make them sum to between
-      {int(TARGET_MIN_S)} and {int(TARGET_MAX_S)} seconds. Vary the lengths: a run of equal
+    - {scenes_rule} Vary the lengths: a run of equal
       scenes reads as a slideshow. Open on a 4s or 6s scene.
     - "per_second" must have exactly as many entries as the scene has seconds —
       8 entries for an 8-second scene. Entry i describes second i to i+1.
@@ -820,10 +874,10 @@ def generate_script_prompt2(topic_spec):
                     model=m,
                     contents=contents,
                     config=types.GenerateContentConfig(
-                        system_instruction=("You are a professional scriptwriter for geography shorts. Narration totals 105-135 words across all segments — never fewer than 95. "
+                        system_instruction=("You are a professional scriptwriter for geography videos. " + sys_length
                                             + ("Write all narration (segment 'text' and 'hook'), 'caption', 'upload_title' and 'title_regional' in Hindi, Devanagari script; keep every other field in English. Every JSON key must be in double quotes. " if NARRATION_LANG == "hi" else "")
                                             + "Always return ONLY valid JSON inside a ```json block."),
-                        max_output_tokens=8192,
+                        max_output_tokens=65536,   # long remakes: ~800 tokens a scene; never truncate
                         response_mime_type="application/json",
                         safety_settings=[
                             types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
@@ -851,7 +905,7 @@ def generate_script_prompt2(topic_spec):
             )
 
         try:
-            data = validate_script(_extract_json(content), topic_spec)
+            data = validate_script(_extract_json(content), topic_spec, window)
             miss = sound_map.missing(data["segments"], sm)
             if miss and script_try < STORY_RETRIES:
                 raise ScriptGenerationError(sound_map.missing_reason(miss))
