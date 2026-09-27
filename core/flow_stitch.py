@@ -167,7 +167,10 @@ def build_prompt(seg, style="", index=1, total=1, seconds=None, music_style=None
         parts.append(f"Background: {bg['description']}")
     if style:
         parts.append(f"Visual style: {style}.")
-    parts.append(NEG.format(orient="horizontal" if wide else "vertical") + ".")
+    neg_prompt = NEG.format(orient="horizontal" if wide else "vertical")
+    if seg.get("_cta"):
+        neg_prompt = neg_prompt.replace(", no on-screen text, no captions, no subtitles, no watermark, no logos", "")
+    parts.append(neg_prompt + ".")
     audio = seg.get("audio") or {}
     sound, fxs = [], []
     if isinstance(audio, dict):
@@ -218,6 +221,7 @@ def build_job(script_data, output_dir, slug, aspect="9:16"):
         secs = clip_seconds(seg)
         clips.append({"prompt": build_prompt(seg, style, index=i, total=n, seconds=secs, music_style=music_style, aspect=aspect),
                       "seconds": secs,
+                      "is_cta": seg.get("_cta", False),
                       "out": str(flow_dir / f"{i:02d}.mp4")})
     job_path = Path(naming.path(output_dir, slug, "flow_job"))
     if aspect == "16:9":
@@ -287,7 +291,7 @@ def _audio_bed():
 # and sound together) to its speech plus a short breath.
 TRIM_SILENCE = os.getenv("STITCH_TRIM_SILENCE", "1").strip() != "0"
 SPEECH_DROP_DB = float(os.getenv("STITCH_SPEECH_DROP_DB", "9"))   # this far under the voice = dead air
-LEAD_PAD, TAIL_PAD, MIN_KEEP = 0.12, 0.35, 1.5
+LEAD_PAD, TAIL_PAD, MIN_KEEP = 0.05, 0.10, 1.5
 
 
 def speech_bounds(path, dur):
@@ -339,7 +343,7 @@ def keep_window(src, d):
     return a, z - a
 
 
-def stitch(clip_paths, reel_path, work_dir, size=(W, H)):
+def stitch(clips, reel_path, work_dir, size=(W, H)):
     sw, sh = size
     work = Path(work_dir) / f"_stitch_{sw}x{sh}"
     if work.exists():
@@ -348,8 +352,9 @@ def stitch(clip_paths, reel_path, work_dir, size=(W, H)):
     overlay = _handle_overlay(work / "handle.png", size)
 
     vids, auds, total = [], [], 0.0
-    for k, src in enumerate(clip_paths, 1):
-        src = Path(src)
+    for k, src in enumerate(clips, 1):
+        is_cta = src.get('is_cta') if isinstance(src, dict) else False
+        src = Path(src['out']) if isinstance(src, dict) else Path(src)
         d = probe_duration(src)
         if d <= 0.2:
             raise AssetGenerationError(f"{src.name} is empty ({d:.2f}s)")
@@ -357,12 +362,21 @@ def stitch(clip_paths, reel_path, work_dir, size=(W, H)):
         total += keep
         v, a = work / f"v{k:02d}.mp4", work / f"a{k:02d}.wav"
         base = f"[0:v]scale={sw}:{sh}:force_original_aspect_ratio=increase,crop={sw}:{sh},fps={FPS},setsar=1"
-        if overlay:
-            cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-i", str(overlay),
-                   "-filter_complex", f"{base}[b];[b][1:v]overlay=0:0,format=yuv420p[o]", "-map", "[o]"]
+        logo_path = Path("brand/logo.png")
+        if is_cta and logo_path.exists():
+            if overlay:
+                cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-i", str(overlay), "-i", str(logo_path),
+                       "-filter_complex", f"{base}[b];[b][1:v]overlay=0:0[b2];[2:v]scale=500:-1[logo];[b2][logo]overlay=(W-w)/2:(H-h)*0.40,format=yuv420p[o]", "-map", "[o]"]
+            else:
+                cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-i", str(logo_path),
+                       "-filter_complex", f"{base}[b];[1:v]scale=500:-1[logo];[b][logo]overlay=(W-w)/2:(H-h)*0.40,format=yuv420p[o]", "-map", "[o]"]
         else:
-            cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src),
-                   "-vf", base.replace("[0:v]", "") + ",format=yuv420p"]
+            if overlay:
+                cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-i", str(overlay),
+                       "-filter_complex", f"{base}[b];[b][1:v]overlay=0:0,format=yuv420p[o]", "-map", "[o]"]
+            else:
+                cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src),
+                       "-vf", base.replace("[0:v]", "") + ",format=yuv420p"]
         _run(cmd + ["-an", "-ss", f"{ss:.3f}", "-t", f"{keep:.3f}", "-c:v", "libx264", "-preset", "veryfast",
                     "-profile:v", "high", "-crf", "20", "-r", str(FPS), str(v)])
         if has_audio(src):
@@ -459,7 +473,7 @@ def render_reel(script_data, output_dir, slug, aspect="9:16"):
     reel = reel_path_for(output_dir, slug, aspect)
     if os.getenv("FLOW_REEL_SUFFIX"):
         reel = str(reel).replace(".mp4", os.getenv("FLOW_REEL_SUFFIX") + ".mp4")
-    return str(stitch([c["out"] for c in clips], reel, output_dir, SIZES[aspect]))
+    return str(stitch(clips, reel, output_dir, SIZES[aspect]))
 
 
 def reel_path_for(output_dir, slug, aspect="9:16"):
@@ -479,3 +493,25 @@ if __name__ == "__main__":
     od = BASE_DIR / "outputs" / s
     with open(naming.path(od, s, "script"), encoding="utf-8") as f:
         print(render_reel(json.load(f), str(od), s, "16:9" if "--169" in sys.argv else "9:16"))
+
+
+def pad_916_to_169(src_path, dst_path):
+    """Converts a 9:16 reel to 16:9 by padding it with a blurred background of itself."""
+    import subprocess
+    cmd = [
+        "ffmpeg", "-y", "-loglevel", "error", "-i", str(src_path),
+        "-filter_complex",
+        "[0:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,boxblur=40:20,setsar=1[bg];"
+        "[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,setsar=1[fg];"
+        "[bg][fg]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
+        "-c:v", "libx264", "-preset", "veryfast", "-profile:v", "high", "-crf", "20",
+        "-c:a", "copy", str(dst_path)
+    ]
+    log(f"Padding 9:16 to 16:9 -> {Path(dst_path).name}")
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        from pipeline_errors import AssetGenerationError
+        raise AssetGenerationError(f"ffmpeg padding failed: {e}")
+    return str(dst_path)
+

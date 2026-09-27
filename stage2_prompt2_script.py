@@ -25,13 +25,15 @@ load_dotenv()
 # version of exactly that runs 100. Override per run:
 #   RUNTIME_TARGET_MIN_S=80 RUNTIME_TARGET_MAX_S=100 ./venv/bin/python pipeline_daily.py ...
 #
-# There is no fixed floor or ceiling any more (27 Sep 2026). Our length follows
-# the competitor video we are remaking: a 96-second list gets ~96 seconds, not
-# a 45-60s squeeze that drops half the members. With no competitor video there
-# is no length rule at all — the topic decides.
+# Length follows the competitor video being remade. The only hard ceiling is the
+# platform limit: YouTube Shorts and Instagram Reels both accept uploads up to
+# 3 minutes (180 s). A competitor video longer than that is still remade, but
+# the script is capped so the reel qualifies as a Short/Reel.
 WORDS_PER_S = 2.3            # Flow's Hindi read, measured: 109 words -> 47.7s
 MATCH_BAND = 0.08            # aim within +-8% of their runtime
 SHORT_TOLERANCE = 0.85       # rejected only if under 85% of theirs (items dropped)
+# Hard ceiling for 9:16 uploads: YouTube Shorts = 3 min, Instagram Reels = 3 min
+PLATFORM_CAP_S = int(os.getenv("PLATFORM_CAP_S", "180"))
 
 
 def _probe_seconds(path):
@@ -49,15 +51,22 @@ def _probe_seconds(path):
 def runtime_window(competitor_s):
     """(low, high) seconds to aim for, or None when there is nothing to match.
 
+    The high end is always capped at PLATFORM_CAP_S so the reel qualifies as a
+    YouTube Short / Instagram Reel regardless of how long the competitor runs.
     RUNTIME_TARGET_MIN_S / RUNTIME_TARGET_MAX_S still override for one run.
     """
     lo, hi = os.getenv("RUNTIME_TARGET_MIN_S"), os.getenv("RUNTIME_TARGET_MAX_S")
     if lo and hi:
-        return float(lo), float(hi)
+        return float(lo), min(float(hi), PLATFORM_CAP_S)
     if competitor_s and competitor_s > 0:
-        return competitor_s * (1 - MATCH_BAND), competitor_s * (1 + MATCH_BAND)
+        raw_lo = competitor_s * (1 - MATCH_BAND)
+        raw_hi = competitor_s * (1 + MATCH_BAND)
+        hi_capped = min(raw_hi, PLATFORM_CAP_S)
+        # If the competitor itself is longer than the cap, aim for the cap window
+        lo_capped = min(raw_lo, PLATFORM_CAP_S)
+        return lo_capped, hi_capped
     return None
-REQUIRED_KEYS = ("title", "hook", "segments", "caption", "facts")
+REQUIRED_KEYS = ("title", "segments", "caption", "facts")
 
 # Narration language. The competitor reels are in English; with "hi" the model
 # takes their content, converts it and WRITES the narration ("text", "hook")
@@ -70,7 +79,7 @@ HINDI_BRIEF = """
     NARRATION LANGUAGE: HINDI.
     The competitor video and any source material are in English. Understand the
     content, then WRITE the narration yourself in natural spoken Hindi — do not
-    translate line by line. Every segment's "text" and the "hook" must be in
+    translate line by line. Every segment's "text" must be in
     Hindi, in Devanagari script:
     - Everyday Hindustani, the way a warm Indian documentary narrator speaks on
       YouTube — not heavy Sanskritised Hindi, not Hinglish in Roman letters.
@@ -110,24 +119,15 @@ STORY_BRIEF = """
     Each scene's line is voiced separately, clip by clip, so the only thing that
     carries the viewer from one clip to the next is the words. Write it so that
     a viewer who hears only the narration follows one thread from start to end:
-    - Segment 1's "text" IS the hook, word for word the same as "hook": a
-      surprising claim or a question the video then answers. Never open on a
-      flat definition ("X is a country in ...").
-    - Every later line picks up from the line before it. Start it with a
-      linking word or a reference back ("लेकिन", "फिर", "इसीलिए", "इसी वजह से",
+    - Every line after the first picks up from the line before it. Start it with
+      a linking word or a reference back ("लेकिन", "फिर", "इसीलिए", "इसी वजह से",
       "तो", "इसके बाद", "जवाब में", "तब", "यानी", "आखिर में", "यह", "इसी",
       "दोनों", ...). No line may start a new subject cold.
     - Cause before effect. If a line says something happened (a coup, a war, a
       partition, a treaty), that line or the one before it says who did it and
       why. "After a coup, Turkey occupied the north" without whose coup and
       what it wanted is a fact, not a story.
-    - Keep every promise. If the hook names a number or asks a question ("four
-      parts", "why?"), the script delivers exactly that: name each item as the
-      story reaches it ("पहला ...", "दूसरा ...", "तीसरा ..."), and do not
-      leave one out.
-    - The last segment is the payoff: it answers the hook in one line and
-      closes the loop. Never end on a mid-story fact.
-    - Chronology runs one way. If you jump back in time after the hook, say so
+    - Chronology runs one way. If you jump back in time, say so
       ("यह कहानी शुरू होती है ..."), then move forward without skipping back.
     - One or two complete sentences per scene. Never split a sentence across
       two scenes: each clip is voiced on its own and a half-sentence cannot be.
@@ -153,15 +153,8 @@ def _norm(t):
     return re.sub(r"[\s\u0964\u0965!?,.:;\"'“”‘’—–-]+", " ", str(t)).strip()
 
 
-def check_story(segments, hook):
+def check_story(segments, hook=None):
     """The narration must read as one thread. Raises with what to fix."""
-    first = _norm(segments[0].get("text", ""))
-    h = _norm(hook)
-    if h and h not in first and first not in h:
-        raise ScriptGenerationError(
-            "Segment 1's text must BE the hook, word for word. The hook was "
-            f"\"{hook}\" but segment 1 says \"{segments[0].get('text', '')}\". "
-            "Put the hook as segment 1's spoken line.")
     if NARRATION_LANG != "hi" or len(segments) < 3:
         return
     cold = [i for i, sg in enumerate(segments[1:], 2)
@@ -169,22 +162,9 @@ def check_story(segments, hook):
     allowed = (len(segments) - 1) // 4          # one in four may link by content alone
     if len(cold) > allowed:
         raise ScriptGenerationError(
-            f"Scenes {cold} start a new subject cold. Each line after the hook must pick up "
+            f"Scenes {cold} start a new subject cold. Each line after the first must pick up "
             f"from the one before: open it with a linking word (लेकिन, फिर, इसीलिए, तो, "
             f"इसके बाद, जवाब में, यानी, आखिर में ...) or refer back to what was just said.")
-    # A hook that promises a count ("चार हिस्से") must be counted off.
-    words = h.split()
-    for k, w in enumerate(words[:-1]):
-        n = COUNT_WORDS.get(w)
-        if n and any(words[k + 1].startswith(c) for c in COUNT_NOUNS):
-            body = set(_norm(" ".join(str(sg.get("text", "")) for sg in segments[1:])).split())
-            missing = [ORDINALS[j][0] for j in range(n - 1) if not body.intersection(ORDINALS[j])]
-            if missing:
-                raise ScriptGenerationError(
-                    f"The hook promises {w} {words[k + 1]}, but the script never counts them off "
-                    f"(missing: {', '.join(missing)}). Name each one as the story reaches it "
-                    f"— पहला ..., दूसरा ... — and let the last line name the final one.")
-            break
 
 def _extract_json(raw):
     """Pull the JSON object out of a model response.
@@ -333,6 +313,11 @@ def validate_script(data, topic_spec, window=None, faithful=False):
             seg["seconds"] = float(seg.get("seconds", 0))
         except (TypeError, ValueError):
             raise ScriptGenerationError(f"Segment {i} has a non-numeric 'seconds': {seg!r}")
+        
+        words = len(str(seg.get("text", "")).split())
+        sec = seg["seconds"]
+        if sec > 0 and (words / sec) > 3.4:
+            raise ScriptGenerationError(f"Segment {i} is too fast for TTS ({words} words in {sec}s = {words/sec:.1f} w/s). The limit is 3.4 w/s. Break it down into shorter sentences.")
 
     # The scene grammar: 4/6/8/10 seconds a scene, one prompt per second, a
     # full audio description per scene. A model that answered with 15-second
@@ -342,15 +327,78 @@ def validate_script(data, topic_spec, window=None, faithful=False):
     # (Previously scene_grammar.apply was called here. Now we just trust the model's segments)
     data["segments"] = segments
 
-    if faithful:
-        # Their narration is the script: only the hook must open segment 1.
-        first, h = _norm(segments[0].get("text", "")), _norm(data.get("hook", ""))
-        if h and h not in first and first not in h:
-            raise ScriptGenerationError(
-                f"Segment 1's text must start with the hook (your translation of N1). The hook "
-                f"was \"{data.get('hook')}\" but segment 1 says \"{segments[0].get('text', '')}\".")
-    else:
-        check_story(segments, data.get("hook", ""))
+    # --- pass 1: strip the competitor's own CTA line -------------------------
+    # The competitor's last line is often their own "like, share and subscribe"
+    # ask. We translate it faithfully but then replace it with our own CTA
+    # variant (appended by maybe_append_cta). Detect it by keywords.
+    _CTA_KEYWORDS = re.compile(
+        r"(like|share|subscribe|सब्सक्राइब|लाइक|शेयर|comment|कमेंट)",
+        re.IGNORECASE)
+    segs = data["segments"]
+    if segs and _CTA_KEYWORDS.search(str(segs[-1].get("text", ""))):
+        dropped = segs.pop()
+        print(f"[Script] stripped competitor CTA line from last segment: "
+              f"{str(dropped.get('text',''))[:80]!r}")
+        if segs and dropped.get("narration_refs"):
+            segs[-1].setdefault("narration_refs", []).extend(dropped["narration_refs"])
+        data["segments"] = segs
+        segments = segs
+
+    # --- pass 2: merge dangling mid-sentence fragments -----------------------
+    # A segment whose text ends without sentence-closing punctuation (।, ?, !,
+    # ., …) is a mid-sentence fragment — voiced as a hanging clause with no
+    # full stop. Merge it with the next segment if the combined scene duration
+    # fits inside a valid Flow clip length (≤10 s). This eliminates the choppy
+    # joins that produce continuity gaps in the stitched reel.
+    SENTENCE_END = re.compile(r"[।?!.…।\u0964\u0965]\s*$")
+    VALID_LENGTHS = (4, 6, 8, 10)
+
+    def _merge_segments(a, b):
+        """Combine two segments: join text, sum seconds (capped at 10), merge beats."""
+        combined_s = a["seconds"] + b["seconds"]
+        # snap to the next valid clip length ≥ combined
+        snapped = next((v for v in VALID_LENGTHS if v >= combined_s), 10)
+        merged = dict(b)          # carry b's video/audio metadata as the main scene
+        merged["text"] = str(a.get("text", "")).rstrip() + " " + str(b.get("text", "")).lstrip()
+        merged["seconds"] = float(snapped)
+        # combine per-second beats proportionally (keep b's if merging would overflow)
+        a_beats = list(a.get("per_second") or [])
+        b_beats = list(b.get("per_second") or [])
+        if a_beats and b_beats:
+            merged["per_second"] = (a_beats + b_beats)[:snapped]
+        return merged
+
+    merged_segs, i = [], 0
+    while i < len(segments):
+        seg = segments[i]
+        text = str(seg.get("text", "")).rstrip()
+        combined_s = seg["seconds"]
+        # Keep merging forward as long as this segment is an open fragment AND
+        # the next one exists AND the combined duration fits ≤ 10 s
+        while (not SENTENCE_END.search(text)
+               and i + 1 < len(segments)
+               and combined_s + segments[i + 1]["seconds"] <= 10):
+            i += 1
+            seg = _merge_segments(seg, segments[i])
+            text = str(seg.get("text", "")).rstrip()
+            combined_s = seg["seconds"]
+            print(f"[Script] merged dangling fragment → {seg['seconds']:.0f}s: "
+                  f"{str(seg.get('text',''))[:80]!r}")
+        merged_segs.append(seg)
+        i += 1
+
+    if len(merged_segs) != len(segments):
+        print(f"[Script] fragment merge: {len(segments)} → {len(merged_segs)} segments")
+        data["segments"] = merged_segs
+        segments = merged_segs
+
+    for seg in segments:
+        text = str(seg.get("text", "")).rstrip()
+        if not SENTENCE_END.search(text):
+            seg["text"] = re.sub(r"[,;:-]\s*$", "", text) + "।"
+
+    if not faithful:
+        check_story(segments)
 
     if NARRATION_LANG == "hi":
         roman = [i for i, sg in enumerate(segments) if not DEVANAGARI.search(str(sg.get("text", "")))]
@@ -367,8 +415,7 @@ def validate_script(data, topic_spec, window=None, faithful=False):
     estimated_audio_s = sum(estimate_audio_duration(s.get("text", "")) for s in segments)
     total_words = sum(len(str(s.get("text", "")).split()) for s in segments)
     
-    # No maximum anywhere. The only length check: a remake that runs well
-    # short of the video it remakes has dropped content, so send it back.
+    # Too-short check: a remake that runs well short of the competitor has dropped content.
     if window and not faithful and estimated_audio_s < window[0] * SHORT_TOLERANCE:
         need = int(window[0] * WORDS_PER_S)
         raise ScriptGenerationError(
@@ -377,7 +424,18 @@ def validate_script(data, topic_spec, window=None, faithful=False):
             f"{window[0]:.0f}-{window[1]:.0f}s — write about {need}+ words and cover every "
             f"item and beat they cover, adding scenes as needed."
         )
-        
+
+    # Too-long check: 9:16 uploads must not exceed the platform limit.
+    # YouTube Shorts = 3 min, Instagram Reels (upload) = 3 min → PLATFORM_CAP_S = 180 s.
+    if requested_video_s > PLATFORM_CAP_S:
+        max_words = int(PLATFORM_CAP_S * WORDS_PER_S)
+        raise ScriptGenerationError(
+            f"Script is too long for a 9:16 Short/Reel: video segments total "
+            f"{requested_video_s:.0f}s but the platform limit is {PLATFORM_CAP_S}s (3 minutes). "
+            f"Cut scenes so the total is ≤{PLATFORM_CAP_S}s (≤{max_words} narration words). "
+            f"Prioritise the most impactful beats; trim or merge the rest."
+        )
+
     data["estimated_audio_s"] = round(estimated_audio_s, 2)
     data["requested_video_s"] = requested_video_s
 
@@ -394,9 +452,210 @@ def validate_script(data, topic_spec, window=None, faithful=False):
     if topic_spec.get("kind") == "set":
         validate_set(data, topic_spec)
     normalize_caption(data, topic_spec)
+    maybe_append_cta(data, topic_spec)
 
     return data
 
+
+# ------------------------------------------------------------------ CTA segment
+# A short, unique call-to-action appended to the reel whenever there is at
+# least 6 seconds of headroom under the platform cap. Each variant is phrased
+# differently so the audience never hears the same closing line twice. The
+# {topic} placeholder is filled with the video title so the ask feels organic.
+#
+# To disable: set env  APPEND_CTA=0
+# To pin a specific variant: set env  CTA_VARIANT=3  (0-indexed)
+
+_CTA_POOL = [
+    # variant 0 — question hook
+    {
+        "hi":  "क्या आपको यह सफर पसंद आया? Like करें, Comment में बताएं, और Subscribe करें — हर दिन नया Geography!",
+        "en":  "Did you enjoy the journey? Hit Like, drop a comment, and Subscribe — new geography every single day!",
+        "video_prompt": "The camera slowly pulls back from a glowing world map until the whole globe fills the frame, continents shimmering gold. A soft animated pulse ripples outward from the subject region.",
+        "beat": ["Glowing world map fills frame, camera pulling back",
+                 "Continents shimmer, subject region pulses gold",
+                 "Subscribe bell icon fades in bottom-right, glowing",
+                 "Bell rings with a soft chime, light ripple outward",
+                 "Map rotates gently, new pin drops on another region",
+                 "Screen brightens to white, channel name lingers"],
+    },
+    # variant 1 — map-explorer framing
+    {
+        "hi":  "दुनिया बड़ी है — Subscribe करें ताकि एक भी नक्शा छूट न जाए। Like और Comment ज़रूर करें!",
+        "en":  "The world is vast — Subscribe so you never miss a map. Drop a Like and tell us what to explore next!",
+        "video_prompt": "An animated compass spins on a vintage parchment map; the needle settles on a new destination as a dotted trail traces across the continents.",
+        "beat": ["Vintage parchment map, compass spinning in centre",
+                 "Needle slows, dotted trail appears from subject region",
+                 "Trail curves across continents toward a new pin",
+                 "Pin drops with a soft thud, location circle expands",
+                 "Subscribe text rises from the circle in bold serif",
+                 "Compass needle points at viewer, map fades to warmth"],
+    },
+    # variant 2 — curiosity tease
+    {
+        "hi":  "अगला रहस्य जानना है? Subscribe करें, Like करें, और Comment में लिखें — कहाँ जाएं अगली बार?",
+        "en":  "Want to know the next secret? Subscribe, hit Like, and comment where we should go next!",
+        "video_prompt": "A dark map with glowing question marks scattered across it; one by one they pop open into colourful illustrated scenes as the camera drifts forward.",
+        "beat": ["Dark map, glowing question marks scattered across it",
+                 "First question mark bursts open — colourful illustration",
+                 "Camera drifts forward, second mark pops open",
+                 "Third mark opens — viewer's perspective descends in",
+                 "Question mark in centre pulses, text fades in beneath",
+                 "All marks glow together, warm light fills the frame"],
+    },
+    # variant 3 — community ask
+    {
+        "hi":  "आपकी favourite geography कौन सी है? Comment में बताएं, Like करें, और हमें Subscribe करना मत भूलें!",
+        "en":  "What's your favourite geography fact? Comment below, hit Like, and don't forget to Subscribe!",
+        "video_prompt": "Split-screen montage: four tiny landscapes (mountain, river delta, desert dune, island) arranged in a grid, each animated with a gentle zoom, against a dark atlas background.",
+        "beat": ["Four landscape tiles appear on dark atlas background",
+                 "Mountain tile zooms, snow cap glistens",
+                 "River delta tile animates, waterways spread",
+                 "Desert dune tile shifts in wind, ripple of sand",
+                 "Island tile zooms, turquoise water glows",
+                 "Tiles merge into one frame, Subscribe button pulses"],
+    },
+    # variant 4 — streak / habit framing
+    {
+        "hi":  "रोज़ एक नई दुनिया — Subscribe करें और Like करके हमें बताएं यह सफर जारी रखें!",
+        "en":  "A new world every day — Subscribe and Like to keep this journey going!",
+        "video_prompt": "A calendar-style grid of tiny globe icons, each lighting up in sequence like a streak tracker, ending with today's globe glowing brightest.",
+        "beat": ["Calendar grid of tiny globe icons, all dim",
+                 "First icon lights up gold, then second",
+                 "Chain of lights races across the grid",
+                 "Today's globe pulses largest, warmest glow",
+                 "Streak counter ticks up beneath it",
+                 "All icons glow together, Subscribe text rises"],
+    },
+    # variant 5 — record-breaking hook
+    {
+        "hi":  "क्या आप जानते थे यह? अगर नहीं, तो Subscribe करें — और Like ज़रूर करें ताकि और लोग जान सकें!",
+        "en":  "Did you know that? If not, Subscribe — and Like so more people can discover it too!",
+        "video_prompt": "A tall fact-card stack fans out on screen, each card a different geography highlight; the top card flips to reveal a glowing Like icon underneath.",
+        "beat": ["Tall stack of fact cards, fanned out on screen",
+                 "Cards fan wider, each shows a geography icon",
+                 "Top card lifts and flips in slow motion",
+                 "Underside reveals a glowing Like icon",
+                 "Icon expands, ripple of light across all cards",
+                 "Cards fold back; Subscribe text slides up centre"],
+    },
+    # variant 6 — explorer persona
+    {
+        "hi":  "हर नक्शे में एक कहानी है — Like करें, Subscribe करें, और अगले सफर के लिए तैयार रहें!",
+        "en":  "Every map tells a story — Like, Subscribe, and get ready for the next adventure!",
+        "video_prompt": "A worn leather explorer's journal opens; hand-drawn maps spill out, one page turning to show the subject region with a glowing red route traced across it.",
+        "beat": ["Leather journal cover, candlelight ambience",
+                 "Journal opens, hand-drawn maps fan out",
+                 "Subject-region page turns to front",
+                 "Red route traces itself across the map",
+                 "Route completes, a new blank page turns",
+                 "Blank page fills with Subscribe prompt, pen marks it"],
+    },
+    # variant 7 — gratitude close
+    {
+        "hi":  "देखने के लिए शुक्रिया! Like और Subscribe करें — आपका Support हमें आगे बढ़ाता है।",
+        "en":  "Thanks for watching! Like and Subscribe — your support keeps us exploring.",
+        "video_prompt": "Aerial shot pulling up from the subject landscape into open sky at golden hour; the horizon glows amber and the channel watermark fades in as a warm vignette closes.",
+        "beat": ["Low aerial over subject landscape, golden hour light",
+                 "Camera tilts up, sky fills more of frame",
+                 "Horizon glows amber, clouds catch the light",
+                 "Channel watermark fades in, centred on sky",
+                 "Vignette darkens edges softly, warmth holds",
+                 "Subscribe badge glows beneath watermark, gentle pulse"],
+    },
+    # variant 8 — rhetorical challenge
+    {
+        "hi":  "क्या आप अगला जवाब पहले जानना चाहते हैं? Subscribe करें! Like करके इसे और लोगों तक पहुंचाएं।",
+        "en":  "Want the next answer first? Subscribe! Hit Like to share it with fellow explorers.",
+        "video_prompt": "A radar sweep animation on a dark map; the beam circles and illuminates hidden geography icons — mountains, rivers, cities — each blinking to life as the sweep passes.",
+        "beat": ["Dark map, radar sweep origin at subject region",
+                 "First sweep arc, mountain icons blink on",
+                 "Second sweep, river icons light up",
+                 "Third sweep, city dots pulse into view",
+                 "Full map glows with discovered icons",
+                 "Radar origin pulses Subscribe beacon, warm ring expands"],
+    },
+]
+
+_CTA_DURATION_S = 6   # always a 6-second scene (shortest valid Flow clip)
+
+
+def _pick_cta_variant(data):
+    """Pick a CTA variant deterministically per-video (title hash) so reruns are stable."""
+    import hashlib
+    title = str(data.get("title") or data.get("upload_title") or "")
+    idx_env = os.getenv("CTA_VARIANT", "").strip()
+    if idx_env.isdigit():
+        return _CTA_POOL[int(idx_env) % len(_CTA_POOL)]
+    seed = int(hashlib.md5(title.encode()).hexdigest(), 16)
+    return _CTA_POOL[seed % len(_CTA_POOL)]
+
+
+def _build_cta_segment(data, topic_spec):
+    """Return a fully-formed segment dict for the CTA clip."""
+    v = _pick_cta_variant(data)
+    lang = (data.get("narration_lang") or NARRATION_LANG or "hi").strip().lower()
+    text = v["hi"] if lang == "hi" else v["en"]
+    beats = v["beat"]
+    # Pad or trim beats to exactly _CTA_DURATION_S entries
+    while len(beats) < _CTA_DURATION_S:
+        beats = beats + [beats[-1]]
+    beats = beats[:_CTA_DURATION_S]
+    channel_name = os.getenv("CHANNEL_NAME", "DailyGeoMap")
+    
+    if lang == "hi":
+        text = text.replace("Subscribe करें", f"{channel_name} को Subscribe करें")
+        text = text.replace("हमें Subscribe", f"{channel_name} को Subscribe")
+    else:
+        text = text.replace("Subscribe", f"Subscribe to {channel_name}")
+        
+    vp = v["video_prompt"].rstrip(".") + f". Prominently feature the channel name '{channel_name}' and channel logo."
+    
+    return {
+        "text": text,
+        "speaker": "NARRATOR (V.O.)",
+        "seconds": _CTA_DURATION_S,
+        "_cta": True,           # marker so downstream code can identify this segment
+        "video_prompt": vp,
+        "per_second": beats,
+        "background": {
+            "type": "illustration",
+            "description": "Channel branding close — animated map or globe motif, warm golden palette.",
+        },
+        "audio": {
+            "ambience": "gentle uplifting swell",
+            "music": "warm strings rise slightly to close",
+            "sfx": [],
+            "voice": "warm, inviting, direct address to viewer",
+            "mix": "voice prominent, music swells gently at the end",
+        },
+    }
+
+
+def maybe_append_cta(data, topic_spec):
+    """Append a CTA segment if ≥ 6 s of headroom remain under PLATFORM_CAP_S.
+
+    Skipped when:
+    - APPEND_CTA=0 in env
+    - A CTA segment already exists (reruns are idempotent)
+    - Less than _CTA_DURATION_S seconds of headroom remain
+    """
+    if os.getenv("APPEND_CTA", "1").strip() == "0":
+        return
+    segments = data.get("segments") or []
+    if any(s.get("_cta") for s in segments):
+        return   # already present — idempotent on retry
+    current_s = sum(float(s.get("seconds", 0)) for s in segments)
+    headroom = PLATFORM_CAP_S - current_s
+    if headroom < _CTA_DURATION_S:
+        print(f"[CTA] skipped — only {headroom:.0f}s headroom (need {_CTA_DURATION_S}s)")
+        return
+    cta = _build_cta_segment(data, topic_spec)
+    segments.append(cta)
+    data["segments"] = segments
+    data["requested_video_s"] = current_s + _CTA_DURATION_S
+    print(f"[CTA] appended {_CTA_DURATION_S}s CTA — total now {data['requested_video_s']:.0f}s "
+          f"({headroom:.0f}s was free)")
 
 
 # The competitor's captions are one evocative line, an emoji, and exactly
@@ -688,29 +947,46 @@ def generate_script_prompt2(topic_spec):
     if window:
         lo, hi = window
         w_lo, w_hi = int(lo * WORDS_PER_S), int(hi * WORDS_PER_S)
+        capped = competitor_s > PLATFORM_CAP_S
         print(f"[Prompt 2] length follows the competitor ({competitor_s:.1f}s): "
-              f"aim {lo:.0f}-{hi:.0f}s, {w_lo}-{w_hi} words")
+              f"aim {lo:.0f}-{hi:.0f}s, {w_lo}-{w_hi} words"
+              + (f" [CAPPED at {PLATFORM_CAP_S}s platform limit]" if capped else ""))
+        cap_note = (f" The video is a 9:16 Short/Reel — the hard platform limit is "
+                    f"{PLATFORM_CAP_S} seconds (3 minutes). The total of all scene 'seconds' "
+                    f"MUST NOT exceed {PLATFORM_CAP_S}."
+                    if capped else
+                    f" Hard platform limit: total scene 'seconds' must not exceed {PLATFORM_CAP_S}s.")
         length_brief = (f"LENGTH: the competitor video runs {competitor_s:.0f} seconds. Ours matches it — "
                         f"about {lo:.0f}-{hi:.0f} seconds spoken. Cover EVERYTHING they cover: every "
-                        f"member, place and beat, in their order. Never drop an item to save time.")
+                        f"member, place and beat, in their order. Never drop an item to save time."
+                        + cap_note)
         words_rule = (f"WORD COUNT: the TOTAL words across all 'text' fields combined should be about "
-                      f"{w_lo}-{w_hi} (that is {lo:.0f}-{hi:.0f} seconds spoken). There is no maximum — "
-                      f"if their content needs more, write more. Under {int(lo * SHORT_TOLERANCE * WORDS_PER_S)} "
-                      f"words is rejected because it means content was dropped.")
+                      f"{w_lo}-{w_hi} (that is {lo:.0f}-{hi:.0f} seconds spoken). "
+                      f"Under {int(lo * SHORT_TOLERANCE * WORDS_PER_S)} "
+                      f"words is rejected because it means content was dropped. "
+                      f"Total scene 'seconds' must not exceed {PLATFORM_CAP_S}.")
         scenes_rule = (f"Use as many scenes as the content needs — roughly {int(math.ceil(lo / 8))} to "
-                       f"{int(math.ceil(hi / 6))} at this length, more if needed. There is no scene limit.")
-        sys_length = f"Match the competitor's length: about {w_lo}-{w_hi} words of narration, no maximum. "
+                       f"{int(math.ceil(hi / 6))} at this length, more if needed. "
+                       f"Total 'seconds' across all scenes must not exceed {PLATFORM_CAP_S}.")
+        sys_length = (f"Match the competitor's length: about {w_lo}-{w_hi} words of narration. "
+                      f"Total scene 'seconds' must not exceed {PLATFORM_CAP_S}. ")
     if faithful:
-        words_rule = ("WORD COUNT: whatever a faithful Hindi translation of EVERY competitor line "
-                      "needs — no limit, nothing cut to save words.")
+        max_words_cap = int(PLATFORM_CAP_S * WORDS_PER_S)
+        words_rule = (f"WORD COUNT: whatever a faithful Hindi translation of EVERY competitor line "
+                      f"needs — but total scene 'seconds' must not exceed {PLATFORM_CAP_S} "
+                      f"(≈{max_words_cap} words). Nothing cut to save words except to stay within the "
+                      f"3-minute platform limit.")
         sys_length = ("Translate the competitor's narration line by line into Hindi: every line, "
-                      "in order, nothing added, nothing dropped. ")
+                      f"in order, nothing added, nothing dropped. Total 'seconds' ≤{PLATFORM_CAP_S}. ")
     if not window:
-        length_brief = "LENGTH: no fixed length. Tell the whole topic; the content decides how long it runs."
-        scenes_rule = "Use as many scenes as the content needs. There is no scene limit."
+        max_words_cap = int(PLATFORM_CAP_S * WORDS_PER_S)
+        length_brief = (f"LENGTH: no fixed length. Tell the whole topic; the content decides how long it runs. "
+                        f"Hard platform limit: total scene 'seconds' must not exceed {PLATFORM_CAP_S}s (3 minutes).")
+        scenes_rule = f"Use as many scenes as the content needs. Total 'seconds' must not exceed {PLATFORM_CAP_S}."
         if not faithful:
-            words_rule = "WORD COUNT: no limit — as many words as the topic needs."
-            sys_length = "There is no length limit; the content decides. "
+            words_rule = (f"WORD COUNT: as many words as the topic needs, up to ~{max_words_cap} "
+                          f"(the {PLATFORM_CAP_S}s platform ceiling for 9:16 Shorts/Reels).")
+            sys_length = (f"The content decides the length; stay within the {PLATFORM_CAP_S}s platform limit. ")
     refs_field = ('"narration_refs": ["<ids of the competitor lines this scene translates, e.g. N3, N4>"],'
                   if faithful else "")
     competitor_rule = (
@@ -748,7 +1024,6 @@ def generate_script_prompt2(topic_spec):
     {{
       "title": "<max 4 words, all caps, fits on a cover image>",
       "title_regional": "<the same title in the locally relevant script (Devanagari, Telugu, Tamil, Bengali, Assamese...) — for a non-Indian subject, return the English title>",
-      "hook": "<the opening line — a question or a surprising claim; segment 1's text is exactly this>",
       "segments": [
         {{
           "text": "<spoken line for this scene>",
@@ -931,7 +1206,7 @@ def generate_script_prompt2(topic_spec):
                     contents=contents,
                     config=types.GenerateContentConfig(
                         system_instruction=("You are a professional scriptwriter for geography videos. " + sys_length
-                                            + ("Write all narration (segment 'text' and 'hook'), 'caption', 'upload_title' and 'title_regional' in Hindi, Devanagari script; keep every other field in English. Every JSON key must be in double quotes. " if NARRATION_LANG == "hi" else "")
+                                            + ("Write all narration (segment 'text'), 'caption', 'upload_title' and 'title_regional' in Hindi, Devanagari script; keep every other field in English. Every JSON key must be in double quotes. " if NARRATION_LANG == "hi" else "")
                                             + "Always return ONLY valid JSON inside a ```json block."),
                         max_output_tokens=65536,   # long remakes: ~800 tokens a scene; never truncate
                         response_mime_type="application/json",

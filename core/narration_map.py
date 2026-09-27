@@ -30,7 +30,7 @@ exactly as spoken. This is a transcript, not a summary.
 - Every spoken sentence, verbatim, in the language it is spoken in. Do not
   paraphrase, shorten, correct or skip anything, including the opening line,
   asides, jokes, questions to the viewer and the closing call to action.
-- Split it into lines at sentence or clause boundaries, one line per 2-6
+- Split it into lines at sentence or clause boundaries (even mid-sentence if needed), STRICTLY ONE LINE PER 2-6
   seconds of speech, in time order.
 - For each line: the second it starts and ends, and what is on screen while it
   is said (the place, map, building or text shown).
@@ -130,6 +130,8 @@ def brief(nm, lang="hi"):
       lists the ids it carries in "narration_refs" (e.g. ["N3", "N4"]), in
       order; every id appears in exactly one scene.
     - "hook" is your translation of N1 (and segment 1's text starts with it).
+    - TTS PACING LIMIT: The final TTS voice cannot read fast. If their sentence is extremely long (e.g., long lists), DO NOT cram it all into one 8 or 10-second scene. Break it down into two separate short sentences across two scenes. No scene's text may exceed 3.0 words per second.
+    - GRAMMAR: Every scene's text MUST be a completely independent, grammatically valid sentence. It MUST end cleanly with a full stop. Do not let a single sentence spill over across multiple scenes.
     - A script that drops, reorders or adds lines is rejected.
 """
 

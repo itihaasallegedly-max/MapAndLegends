@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 
 from core import performance
 from core import publish_queue
-from core.flow_stitch import render_reel, reel_path_for, ASPECTS
+from core.flow_stitch import render_reel, reel_path_for, pad_916_to_169, ASPECTS
 from pipeline_errors import (
     AssetGenerationError,
     ConfigError,
@@ -354,7 +354,7 @@ def run_render_pipeline(slug, generate_only=False):
             reels["16:9"] = wide
         else:
             try:
-                reels["16:9"] = render_reel(script_data, output_dir, slug, "16:9")
+                reels["16:9"] = pad_916_to_169(reels["9:16"], wide)
             except AssetGenerationError as e:
                 print(f"\n!! 16:9 render failed — this topic goes out in 9:16 only: {e}")
                 _append_jsonl(RUNS_FILE, {
