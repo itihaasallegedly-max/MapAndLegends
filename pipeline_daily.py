@@ -147,7 +147,13 @@ def _build_topic_spec(force_topic):
     import re
     url_match = re.search(r'(https?://[^\s]+)', force_topic)
     if url_match:
+        # `--topic "Famous Temples of Jharkhand https://youtube.com/shorts/..."`
+        # remakes that competitor video: the URL is the source, the rest is the
+        # subject. The URL never becomes part of the title or the slug.
         spec["url"] = url_match.group(1)
+        name = force_topic.replace(url_match.group(1), "").strip(" -|:") or url_match.group(1)
+        spec.update({"topic": name, "subject": name, "title_en": name.upper(),
+                     "series": "Competitor Rewrite"})
         
     return spec
 
