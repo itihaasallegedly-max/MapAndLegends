@@ -13,3 +13,6 @@ test_kokoro_direct.wav
 # local-only: scratch work, backups (scratch/ holds a .env backup with secrets)
 scratch/
 *.bak*
+
+# test renders: 68 MB of media, kept locally, not in git
+archive/continuity_test/cyprus_continuity_test/
