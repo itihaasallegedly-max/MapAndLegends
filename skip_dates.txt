@@ -1,0 +1,1 @@
+# One date per line (YYYY-MM-DD, local time). run_daily.sh skips generation on these days.

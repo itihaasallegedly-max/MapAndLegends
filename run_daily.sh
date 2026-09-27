@@ -37,6 +37,15 @@ echo "================ $(date -u +%FT%TZ) daily run ================"
 
 [ -f core/sync_references.py ] && "$PY" core/sync_references.py
 
+# Days with no generation: one YYYY-MM-DD per line (local date) in skip_dates.txt.
+# Publish retries still run, so nothing already made is left stranded.
+if [ -f skip_dates.txt ] && grep -qx "$(date +%F)" skip_dates.txt; then
+  echo "[run_daily] $(date +%F) is in skip_dates.txt — no generation today"
+  "$PY" retry_publish.py
+  date -u +%FT%TZ > logs/.last_daily
+  exit 0
+fi
+
 "$PY" pipeline_daily.py --once-per-day
 status=$?
 case $status in
