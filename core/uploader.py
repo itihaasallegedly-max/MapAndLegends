@@ -469,10 +469,11 @@ def upload_to_instagram(video_path, script_data, landscape=False):
 
 # ---------------------------------------------------------------- orchestrate
 
-# (platform key, uploader, aspect). The 16:9 cut is published as its own
-# video on each platform, tracked and retried separately from the 9:16 one.
+# (platform key, uploader, aspect). The 16:9 cut goes to YouTube only, as its
+# own video, tracked and retried separately from the 9:16 Short. Instagram gets
+# the 9:16 Reel alone (user decision, 27 Sep 2026).
 PLATFORMS = (("youtube", "upload_to_youtube", "9:16"), ("instagram", "upload_to_instagram", "9:16"),
-             ("youtube_169", "upload_to_youtube", "16:9"), ("instagram_169", "upload_to_instagram", "16:9"))
+             ("youtube_169", "upload_to_youtube", "16:9"))
 
 
 def publish_video(video_path, script_data, platforms=None):

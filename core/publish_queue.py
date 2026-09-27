@@ -22,7 +22,7 @@ import naming  # noqa: E402
 
 OUTPUTS = os.path.join(BASE_DIR, "outputs")
 BACKOFF_H = (1, 4, 12, 24, 24)
-ALL_PLATFORMS = ("youtube", "instagram", "youtube_169", "instagram_169")
+ALL_PLATFORMS = ("youtube", "instagram", "youtube_169")   # 16:9 is YouTube only
 
 
 def _now():
@@ -50,7 +50,10 @@ def save(slug, state):
 
 
 def pending_platforms(state):
-    return [k for k, v in state.get("platforms", {}).items() if not v.get("published")]
+    # A platform we no longer publish to (instagram_169, dropped 27 Sep) never
+    # counts as pending, so an old record can still finish and clean up.
+    return [k for k, v in state.get("platforms", {}).items()
+            if k in ALL_PLATFORMS and not v.get("published")]
 
 
 def record(slug, reel, result):
