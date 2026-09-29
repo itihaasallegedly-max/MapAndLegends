@@ -96,11 +96,11 @@ HINDI_BRIEF = """
 """
 
 
-# NARRATION_MODE=faithful (default, 27 Sep 2026): the competitor's narration is
+# NARRATION_MODE=faithful (default 27-29 Sep 2026, now opt-in): the competitor's narration is
 # transcribed line by line (core/narration_map.py) and TRANSLATED into Hindi —
 # same lines, same order, nothing added or dropped. Our own story rules (hook,
 # linking words, payoff) do not apply then: their script is the script.
-# NARRATION_MODE=free restores the old "write your own story" behaviour.
+# NARRATION_MODE=free (default since 29 Sep 2026): the model writes its own story.
 NARRATION_MODE = os.getenv("NARRATION_MODE", "free").strip().lower()
 MAX_DROPPED_LINES = 0.10     # on the last try, accept at most 10% of their lines missing
 
