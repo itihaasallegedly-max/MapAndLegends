@@ -39,6 +39,14 @@ def download_video(url: str, out_dir: str = None) -> str:
     ]
     
     res = subprocess.run(cmd, capture_output=True, text=True)
+    new = os.path.join(BASE_DIR, "venv", "bin", "yt-dlp_macos")
+    if res.returncode != 0 and os.path.exists(new):
+        # The venv's yt-dlp is stuck on Python 3.9 and YouTube keeps changing
+        # its blocks; the standalone build carries its own Python and is current.
+        print("[CompetitorDownload] venv yt-dlp failed — retrying with yt-dlp_macos")
+        res = subprocess.run([new, url, "-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b",
+                              "--merge-output-format", "mp4", "--output", out_path,
+                              "--force-overwrites"], capture_output=True, text=True)
     if res.returncode != 0:
         raise RuntimeError(f"yt-dlp failed (exit {res.returncode}) for {url}:\n{res.stderr}")
         

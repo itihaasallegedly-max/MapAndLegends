@@ -7,6 +7,9 @@ import subprocess
 BASE_DIR = pathlib.Path(__file__).parent
 LEDGER = BASE_DIR / "used_topics.sha1"
 YT_DLP_BIN = BASE_DIR / "venv" / "bin" / "yt-dlp"
+# How far back each competitor channel is scanned. 15 ran dry on 29 Sep after
+# a day of test runs (30 newest Shorts all used); older ones are still unseen.
+SCAN_DEPTH = int(os.getenv("COMPETITOR_SCAN_DEPTH", "60"))
 
 def slug_hash(t):
     """Generates SHA1 hash of normalised topic string for dedup ledger."""
@@ -26,12 +29,15 @@ def fetch_unseen_competitor_shorts():
         cmd = [
             str(YT_DLP_BIN),
             "--flat-playlist",
-            "--playlist-end", "15",
+            "--playlist-end", str(SCAN_DEPTH),
             "--print", "original_url",
             channel_url
         ]
         
         res = subprocess.run(cmd, capture_output=True, text=True)
+        new = BASE_DIR / "venv" / "bin" / "yt-dlp_macos"
+        if res.returncode != 0 and new.exists():
+            res = subprocess.run([str(new)] + cmd[1:], capture_output=True, text=True)
         if res.returncode != 0:
             print(f"[DailyDraw] WARNING: yt-dlp failed for {channel_url}")
             continue
@@ -165,8 +171,15 @@ def draw_daily_topic(mark_used=False):
     if CONTENT_MODE != "competitor":
         return draw_backlog_topic(mark_used=mark_used)
     unseen = fetch_unseen_competitor_shorts()
-    
+
     if not unseen:
+        # Never skip a day for want of a competitor Short: fall back to our own
+        # topics.json backlog (the script is then written from the subject,
+        # with the same story, fact-check and review gates).
+        if os.getenv("COMPETITOR_FALLBACK", "backlog") == "backlog":
+            print(f"[Stage 2 Draw] no unseen competitor Shorts in the newest {SCAN_DEPTH} "
+                  f"per channel — drawing from our own backlog instead")
+            return draw_backlog_topic(mark_used=mark_used)
         raise SystemExit("Backlog exhausted — no unseen videos found on competitor channels.")
 
     pick_url = unseen[0]  # Just take the freshest one
