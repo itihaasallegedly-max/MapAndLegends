@@ -197,6 +197,60 @@ def _soft(msg):
     raise ScriptGenerationError(msg)
 
 
+def _names_from(source_notes, data, topic_spec):
+    """Candidate on-screen names: map_scenes, the notes' subjects and values."""
+    names = []
+    for m in data.get("map_scenes") or []:
+        if isinstance(m, dict):
+            names += [m.get("label"), m.get("place")]
+    for n in source_notes or []:
+        parts = [p.strip() for p in str(n).split("|")]
+        if parts:
+            names.append(parts[0])
+        if len(parts) > 2 and not re.search(r"\d", parts[2]) and len(parts[2]) <= 30:
+            names.append(parts[2])
+    names.append((topic_spec or {}).get("subject"))
+    out, seen = [], set()
+    for x in names:
+        x = re.sub(r"\s+", " ", str(x or "")).strip()
+        if 3 <= len(x) <= 28 and x.lower() not in seen and not re.search(r"[\u0900-\u097F]", x):
+            seen.add(x.lower())
+            out.append(x)
+    return out
+
+
+def fill_labels(data, source_notes=None, topic_spec=None):
+    """Give a scene with no labels the names its line actually says (at most 2)."""
+    from core.translit import spoken
+    names = _names_from(source_notes, data, topic_spec)
+    filled = []
+    for i, sg in enumerate(data.get("segments") or [], 1):
+        if sg.get("_cta") or sg.get("labels"):
+            continue
+        hit = [n for n in names if spoken(n, sg.get("text", ""))]
+        # prefer the fuller name when both "Modhera" and "Sun Temple at Modhera" are said
+        hit.sort(key=len, reverse=True)
+        pick = []
+        for n in hit:
+            if not any(n.lower() in p.lower() or p.lower() in n.lower() for p in pick):
+                pick.append(n)
+        if pick:
+            sg["labels"] = pick[:2]
+            filled.append(i)
+    return filled
+
+
+def vague_scenes(segments, source_notes=None):
+    """Scenes (1-based) with no number and no named place — general praise.
+    A third of the scenes may be connective tissue; more than that is flagged.
+    The last scene is the payoff and is judged by the review, not here."""
+    from core.translit import NUM_WORDS
+    body = [(i, sg) for i, sg in enumerate(segments[:-1], 1) if not sg.get("_cta")]
+    vague = [i for i, sg in body
+             if not NUM_WORDS.search(str(sg.get("text", ""))) and not sg.get("labels")]
+    return vague if len(vague) > max(1, len(body) // 3) else []
+
+
 def check_story(segments, hook=None):
     """The narration must read as one thread. Raises with what to fix."""
     if NARRATION_LANG != "hi" or len(segments) < 3:
@@ -1672,8 +1726,10 @@ def generate_script_prompt2(topic_spec):
     correction, history = "", []
     review_rounds = 0
     _LENIENT["notes"] = []
-    for script_try in range(1, STORY_RETRIES + 1):
-        _LENIENT["on"] = script_try == STORY_RETRIES
+    limit, script_try = STORY_RETRIES, 0
+    while script_try < limit:
+        script_try += 1
+        _LENIENT["on"] = script_try == limit
         _LENIENT["notes"] = []
         # Every earlier reason, not only the last one: on 29 Sep each retry
         # fixed the reason it was given and reintroduced the one before
@@ -1730,7 +1786,7 @@ def generate_script_prompt2(topic_spec):
             if nm:
                 dropped = narration_map.missing(data["segments"], nm)
                 problem = narration_map.order_problem(data["segments"], nm)
-                if (dropped or problem) and script_try < STORY_RETRIES:
+                if (dropped or problem) and script_try < limit:
                     raise ScriptGenerationError(narration_map.reason(dropped, problem))
                 if len(dropped) > MAX_DROPPED_LINES * len(nm["lines"]):
                     raise ScriptGenerationError(narration_map.reason(dropped, problem))
@@ -1740,7 +1796,7 @@ def generate_script_prompt2(topic_spec):
                 data["narration_map"] = nm
             fix_glued_latin(data["segments"])
             latin = latin_in_text(data["segments"])
-            if latin and script_try < STORY_RETRIES:
+            if latin and script_try < limit:
                 raise ScriptGenerationError(
                     "English letters in the spoken text: "
                     + "; ".join(f"scene {i + 1}: {', '.join(ws)}" for i, ws in latin)
@@ -1754,7 +1810,7 @@ def generate_script_prompt2(topic_spec):
                 drop_filler_labels(data["segments"], nm)
             if nm:
                 lost = missing_numbers(data["segments"], nm)
-                if lost and script_try < STORY_RETRIES:
+                if lost and script_try < limit:
                     raise ScriptGenerationError(
                         "Numbers from the competitor are missing: "
                         + "; ".join(f"{lid} says {', '.join(ns)}" for lid, ns in lost)
@@ -1764,7 +1820,7 @@ def generate_script_prompt2(topic_spec):
             if faithful and window:
                 budget = int(window[1] * FLOW_HINDI_WPS)
                 total = sum(len(str(sg.get("text", "")).split()) for sg in data["segments"])
-                if total > budget * 1.12 and script_try < STORY_RETRIES:
+                if total > budget * 1.12 and script_try < limit:
                     raise ScriptGenerationError(
                         f"Too long: {total} Hindi words, the budget is about {budget} "
                         f"(the competitor runs {window[1]:.0f}s at most). Keep every line but "
@@ -1777,7 +1833,7 @@ def generate_script_prompt2(topic_spec):
                 if why == "__unchecked__":
                     raise ScriptGenerationError(
                         "Rewrite mode: the originality check could not run, so the script is not published.")
-                if why and script_try < STORY_RETRIES:
+                if why and script_try < limit:
                     raise ScriptGenerationError(why)
                 if why:
                     raise ScriptGenerationError(f"Rewrite mode: still too close after {STORY_RETRIES} tries. {why}")
@@ -1792,7 +1848,13 @@ def generate_script_prompt2(topic_spec):
                 review, unspoken, probs = source_facts.viewer_review(
                     client, data, call_model=model_client.call_model, types=types)
                 blocking = [p for p in probs if str(p.get("kind")).lower() == "fact"]
-                if review and (blocking or review_rounds == 0) and script_try < STORY_RETRIES:
+                if review and review_rounds == 0 and script_try == limit and limit == STORY_RETRIES:
+                    # The review first ran on the last try (Gujarat, 29 Sep): its
+                    # hook/ending notes would only be filed, never acted on. One
+                    # extra try so they are acted on once.
+                    limit += 1
+                    print("[Review] first review came on the last try — one extra try to act on it")
+                if review and (blocking or review_rounds == 0) and script_try < limit:
                     review_rounds += 1
                     raise ScriptGenerationError(review)
                 if blocking:
@@ -1804,6 +1866,13 @@ def generate_script_prompt2(topic_spec):
                 gone = source_facts.drop_labels(data["segments"], unspoken)
                 if gone:
                     print(f"[Review] removed {gone} label(s) the narration never says: {unspoken}")
+            filled = fill_labels(data, source_notes, topic_spec)
+            if filled:
+                print(f"[Labels] filled empty scene(s) from the script's own place names: {filled}")
+            vague = vague_scenes(data["segments"], source_notes)
+            if vague:
+                _soft(f"Scenes {vague} say nothing specific. Give each one a number, a date, a "
+                      f"count or a named place from the research notes — not general praise.")
             if os.getenv("FACTCHECK", "1") != "0":
                 # What the viewer hears, checked scene by scene. A false claim is
                 # sent back with the correct version; still false after the last
@@ -1812,10 +1881,10 @@ def generate_script_prompt2(topic_spec):
                 data["factcheck"] = gate
                 if not gate["safe_to_publish"]:
                     raise ScriptGenerationError(
-                        fact_correction(gate) if script_try < STORY_RETRIES else
+                        fact_correction(gate) if script_try < limit else
                         f"Fact-check still failing after {STORY_RETRIES} tries: {gate['reason']}")
             miss = sound_map.missing(data["segments"], sm)
-            if miss and script_try < STORY_RETRIES:
+            if miss and script_try < limit:
                 raise ScriptGenerationError(sound_map.missing_reason(miss))
             placed = sound_map.fill_missing(data["segments"], sm)
             if placed:
@@ -1833,7 +1902,7 @@ def generate_script_prompt2(topic_spec):
                 data["quality_notes"] = list(_LENIENT["notes"])
             break
         except ScriptGenerationError as err:
-            if script_try == STORY_RETRIES:
+            if script_try == limit:
                 raise
             correction = str(err)
             if not correction.startswith("Model returned malformed JSON"):

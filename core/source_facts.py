@@ -203,7 +203,12 @@ def brief(notes):
       north") that is not in the notes or certainly true.
     - THE LAST SCENE IS A PAYOFF: a comparison that makes a number feel real,
       or the one thing to remember. Never end on a bare statistic.
-    - Labels: only names and numbers that scene's line SAYS OUT LOUD.
+    - EVERY SCENE CARRIES ONE SPECIFIC DETAIL from the notes: a number, a date,
+      a century, a count, a size, or a named place/person — never a line of
+      general praise ("अनूठी भव्यता", "प्राचीन इतिहास के लिए जाना जाता है").
+      Prefer the surprising details (a count, a record, a date of rebuilding).
+    - Labels: every scene gets 1-3 labels in English letters — the names and
+      numbers that scene's line SAYS OUT LOUD (the line may say them in Hindi).
     - Indian names in their standard Hindi spelling (as Hindi Wikipedia and
       government sources write them), e.g. पापाग्नि, मायलावरम, सोमशिला.
     - You may leave out weak facts and add well-known facts that are accurate
@@ -262,7 +267,11 @@ concrete problems. Do not report style preferences.
 6. ending - the last scene ends on a bare number or fact with no payoff.
 7. spelling - an Indian name is not in its standard Hindi spelling.
 Also list every on-screen label that its scene's line does NOT say out loud
-(a name or number shown but not spoken in that scene).
+(a name or number shown but not spoken in that scene). Labels are in English
+letters and the narration is Hindi: a label IS spoken when the line says the
+same name in Devanagari (Somnath = सोमनाथ, Dwarka = द्वारका) or the same
+number in Hindi words (25 m = पच्चीस मीटर). Only list a label whose name or
+number is absent from that scene's line.
 
 Return JSON only:
 {"problems": [{"scene": <n>, "kind": "<hook|order|link|fact|cta|ending|spelling>",
@@ -304,11 +313,16 @@ def viewer_review(client, data, call_model=None, types=None,
 
 def drop_labels(segments, drop):
     """Remove labels the scene does not say. Returns how many were removed."""
+    from core.translit import spoken
     n = 0
     for scene, label in drop:
         if 1 <= scene <= len(segments):
             labs = segments[scene - 1].get("labels") or []
-            keep = [l for l in labs if l.strip().lower() != label.strip().lower()]
+            text = segments[scene - 1].get("text", "")
+            # The reviewer compares English labels with Hindi speech and got it
+            # wrong on 29 Sep (every Gujarat label dropped): a label the line
+            # says in Devanagari is kept whatever the reviewer thinks.
+            keep = [l for l in labs if l.strip().lower() != label.strip().lower() or spoken(l, text)]
             n += len(labs) - len(keep)
             segments[scene - 1]["labels"] = keep
     return n

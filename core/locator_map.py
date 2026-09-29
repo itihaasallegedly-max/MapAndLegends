@@ -89,7 +89,10 @@ def match(script_data, topic_spec=None):
         keys = {v: [k for k, vv in (table or {}).items() if vv == v] + [v.lower()] for v in names}
         return [v for v in names if any(re.search(r"\b" + re.escape(k) + r"\b", sl) for k in keys[v])]
     states = _in_subject(states, ALIASES) or states
-    rivers = _in_subject(rivers, RIVERS) or rivers
+    # Rivers are drawn only when the video is about them: a Gujarat temples
+    # video mentioned the Narmada, and the map zoomed out to fit the whole river.
+    about_rivers = re.search(r"\briver|\bnadi\b|नदी|\bdelta\b|\bbasin\b", sl)
+    rivers = _in_subject(rivers, RIVERS) or (rivers if about_rivers else [])
     countries = _in_subject(countries) or countries
     try:
         from stage2_daily_draw import clean_idea_title
@@ -132,7 +135,8 @@ def render(script_data, out_path, frame=(1080, 1920), topic_spec=None):
     if india:
         base = [f for f in _load("states") if f["properties"].get("admin") == "India"]
         hit = [f for f in base if f["properties"]["name"] in m["states"]]
-        hit += [f for f in _load("rivers") if f["properties"].get("name") in m["rivers"]]
+        if not hit or not m["states"]:   # frame on the states; rivers only when no state is named
+            hit += [f for f in _load("rivers") if f["properties"].get("name") in m["rivers"]]
         xs = [p[0] for f in hit for r in _rings(f["geometry"]) for p in r if 60 < p[0] < 100 and 5 < p[1] < 38]
         ys = [p[1] for f in hit for r in _rings(f["geometry"]) for p in r if 60 < p[0] < 100 and 5 < p[1] < 38]
         # the region plus neighbours: at least 13 degrees across, so a viewer
@@ -168,6 +172,14 @@ def render(script_data, out_path, frame=(1080, 1920), topic_spec=None):
     layer = Image.new("RGBA", frame, (0, 0, 0, 0))
     ld = ImageDraw.Draw(layer)
     hl = set(m["states"]) | set(m["countries"])
+    if india:
+        # Neighbouring countries underneath: the state layer covers only some
+        # countries, so without this Gujarat sat next to an empty Pakistan.
+        for f in _load("countries"):
+            for ring in _rings(f["geometry"]):
+                pts = [xy(p) for p in ring]
+                if len(pts) > 2:
+                    ld.polygon(pts, fill=(30, 46, 68, 255), outline=EDGE + (255,))
     for f in base:
         name = f["properties"]["name"]
         fill = (120, 96, 48, 255) if name in hl else LAND + (255,)
