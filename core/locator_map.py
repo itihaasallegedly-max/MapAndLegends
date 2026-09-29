@@ -39,6 +39,17 @@ ALIASES = {"odisha": "Odisha", "orissa": "Odisha", "j&k": "Jammu and Kashmir",
            "kashmir": "Jammu and Kashmir", "pondicherry": "Puducherry", "delhi": "Delhi"}
 
 
+def _india_official():
+    """India's outline per Survey of India (geo/india_official.geojson, DataMeet,
+    CC BY 4.0 — credited in every upload description). Natural Earth draws
+    Jammu & Kashmir on the de facto line; a map of India shown to an Indian
+    audience must use the official boundary."""
+    try:
+        return _load("india_official")
+    except (OSError, ValueError):
+        return []
+
+
 def _load(name):
     with open(GEO / f"{name}.geojson", encoding="utf-8") as f:
         return json.load(f)["features"]
@@ -81,6 +92,7 @@ def match(script_data, topic_spec=None):
         countries = sorted({f["properties"]["name"] for f in _load("countries")
                             if f["properties"]["name"] != "India"
                             and re.search(r"\b" + re.escape(f["properties"]["name"].lower()) + r"\b", low)})
+
     subject = str((topic_spec or {}).get("subject") or script_data.get("title") or "")
     # The subject decides what is highlighted when it names something: a Bihar
     # video mentions where the Sone rises, but Madhya Pradesh is not its subject.
@@ -94,6 +106,14 @@ def match(script_data, topic_spec=None):
     about_rivers = re.search(r"\briver|\bnadi\b|नदी|\bdelta\b|\bbasin\b", sl)
     rivers = _in_subject(rivers, RIVERS) or (rivers if about_rivers else [])
     countries = _in_subject(countries) or countries
+    # An all-India topic (national symbols, national parks...) names no single
+    # state, and its rivers are not the subject: show India itself rather than
+    # no map at all (National Symbols reel, 29 Sep: "no inset").
+    if not (states or rivers or countries) and re.search(r"\bindia\b|\bindian\b|भारत", low):
+        countries = ["India"]
+    # an emoji in a title separates the subject from the tagline
+    head = re.split(r"\s*[^\w\s&'\u2019?!,.:()|-]+\s*", subject)[0]
+    subject = head if len(head.strip()) >= 4 else subject
     try:
         from stage2_daily_draw import clean_idea_title
         subject = clean_idea_title(subject)
@@ -101,7 +121,7 @@ def match(script_data, topic_spec=None):
         subject = re.sub(r"\(.*?\)|explained!?|#\S+", "", subject, flags=re.I)
     subject = re.sub(r"[^\w\s&'-]", "", subject).strip(" !-|:")
     return {"states": states[:4], "rivers": rivers[:5], "countries": countries[:3],
-            "title": _fit_words(subject.upper(), 24)}
+            "title": _fit_words(subject.upper(), 28)}
 
 
 def _fit_words(text, n):
@@ -151,7 +171,8 @@ def render(script_data, out_path, frame=(1080, 1920), topic_spec=None):
         hit = [f for f in _load("countries") if f["properties"]["name"] in m["countries"]]
         xs = [p[0] for f in hit for r in _rings(f["geometry"]) for p in r]
         ys = [p[1] for f in hit for r in _rings(f["geometry"]) for p in r]
-        pad = max(max(xs) - min(xs), max(ys) - min(ys), 4) * 2.5
+        span = max(max(xs) - min(xs), max(ys) - min(ys), 4)
+        pad = span * (2.5 if span < 10 else 0.72)   # a small country needs its region; a big one fills the card
         lon0, lon1 = (min(xs) + max(xs)) / 2 - pad, (min(xs) + max(xs)) / 2 + pad
         lat0, lat1 = (min(ys) + max(ys)) / 2 - pad, (min(ys) + max(ys)) / 2 + pad
         base = _load("countries")
@@ -172,6 +193,10 @@ def render(script_data, out_path, frame=(1080, 1920), topic_spec=None):
     layer = Image.new("RGBA", frame, (0, 0, 0, 0))
     ld = ImageDraw.Draw(layer)
     hl = set(m["states"]) | set(m["countries"])
+    official = _india_official()
+    if not india and official:
+        base = [f for f in base if f["properties"]["name"] != "India"] + [
+            {"properties": {"name": "India"}, "geometry": f["geometry"]} for f in official]
     if india:
         # Neighbouring countries underneath: the state layer covers only some
         # countries, so without this Gujarat sat next to an empty Pakistan.
@@ -180,6 +205,11 @@ def render(script_data, out_path, frame=(1080, 1920), topic_spec=None):
                 pts = [xy(p) for p in ring]
                 if len(pts) > 2:
                     ld.polygon(pts, fill=(30, 46, 68, 255), outline=EDGE + (255,))
+        for f in _india_official():   # the official outline over the de facto one
+            for ring in _rings(f["geometry"]):
+                pts = [xy(p) for p in ring]
+                if len(pts) > 2:
+                    ld.polygon(pts, fill=LAND + (255,), outline=EDGE + (255,))
     for f in base:
         name = f["properties"]["name"]
         fill = (120, 96, 48, 255) if name in hl else LAND + (255,)
@@ -198,15 +228,21 @@ def render(script_data, out_path, frame=(1080, 1920), topic_spec=None):
     # highlighted outlines on top, gold, so borders read against the fill
     for f in base:
         if f["properties"]["name"] in hl:
+            allpts = []
             for ring in _rings(f["geometry"]):
                 pts = [xy(p) for p in ring]
                 if len(pts) > 2:
                     ld.line(pts + pts[:1], fill=GOLD + (255,), width=3)
-                    if not india:   # a small country gets a ring so it is findable
-                        xs_ = [q[0] for q in pts]; ys_ = [q[1] for q in pts]
-                        r = max(max(xs_) - min(xs_), max(ys_) - min(ys_)) / 2 + 22
-                        c = ((max(xs_) + min(xs_)) / 2, (max(ys_) + min(ys_)) / 2)
-                        ld.ellipse((c[0] - r, c[1] - r, c[0] + r, c[1] + r), outline=GOLD + (255,), width=4)
+                    allpts += pts
+            # a small country (Cyprus) gets ONE ring around the whole of it so
+            # it is findable; judged on the whole country, not on each island
+            if not india and allpts:
+                xs_ = [q[0] for q in allpts]; ys_ = [q[1] for q in allpts]
+                w_ = max(max(xs_) - min(xs_), max(ys_) - min(ys_))
+                if w_ < cw * 0.25:
+                    r = w_ / 2 + 22
+                    c = ((max(xs_) + min(xs_)) / 2, (max(ys_) + min(ys_)) / 2)
+                    ld.ellipse((c[0] - r, c[1] - r, c[0] + r, c[1] + r), outline=GOLD + (255,), width=4)
     lfont = _font(max(14, int(cw / 24)))
     for f in base:
         name = f["properties"]["name"]

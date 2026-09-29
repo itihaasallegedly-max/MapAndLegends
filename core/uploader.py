@@ -26,6 +26,12 @@ from pipeline_errors import ConfigError, PublishError  # noqa: E402
 NET_RETRY_DELAYS = (10, 20, 40, 60, 90, 120)  # ~5.5 min total
 
 
+
+# The locator inset draws India's boundary from the Survey of India outline
+# published by DataMeet under CC BY 4.0, which requires this credit.
+MAP_CREDIT = ("Map data: Natural Earth; India boundary: Survey of India via DataMeet "
+              "(github.com/datameet/maps, CC BY 4.0).")
+
 def _net(method, url, **kw):
     last = None
     for i, delay in enumerate((0,) + NET_RETRY_DELAYS):
@@ -115,7 +121,7 @@ def build_metadata(script_data, landscape=False):
         yt_title = title if "#shorts" in title.lower() else f"{title} #Shorts"
     return {
         "youtube_title": yt_title[:100],
-        "description": (f"{body}\n\n{' '.join(hashtags)}").strip()[:4900],
+        "description": (f"{body}\n\n{' '.join(hashtags)}\n\n{MAP_CREDIT}").strip()[:4900],
         "tags": [h.lstrip("#") for h in hashtags][:15],
         "instagram_caption": (f"{body}\n\n{' '.join(hashtags[:30])}").strip()[:2190],
     }
