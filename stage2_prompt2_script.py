@@ -1696,6 +1696,18 @@ def generate_script_prompt2(topic_spec):
                     raise ScriptGenerationError(f"Rewrite mode: still too close after {STORY_RETRIES} tries. {why}")
                 print("[Rewrite] originality check passed: facts shared, wording and order our own")
                 data["source_notes"] = source_notes
+                # Would a viewer follow it? Hook, one-way geography, true links,
+                # exact facts, an honest CTA, a payoff, Hindi spellings.
+                review, unspoken = source_facts.viewer_review(
+                    client, data, call_model=model_client.call_model, types=types)
+                if review and script_try < STORY_RETRIES:
+                    raise ScriptGenerationError(review)
+                if review:
+                    print(f"[Review] accepted with open notes after {STORY_RETRIES} tries")
+                    data["review_notes"] = review
+                gone = source_facts.drop_labels(data["segments"], unspoken)
+                if gone:
+                    print(f"[Review] removed {gone} label(s) the narration never says: {unspoken}")
             miss = sound_map.missing(data["segments"], sm)
             if miss and script_try < STORY_RETRIES:
                 raise ScriptGenerationError(sound_map.missing_reason(miss))

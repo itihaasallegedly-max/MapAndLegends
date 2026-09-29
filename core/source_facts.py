@@ -34,7 +34,15 @@ Rules:
   question or hook, jokes, rhetorical lines, opinions, adjectives like
   "incredible", transitions, the ending, calls to subscribe.
 - Never copy a sentence or a phrase from the transcript. Notes are data.
-- Merge duplicates. Shuffle order does not matter; do not preserve theirs.
+- Keep every relation exact. "downstream of Kadapa" must stay "downstream of
+  Kadapa", never become "near Kadapa"; keep "upstream", "between", "after",
+  "north of", "in <district>" exactly as stated. Never merge two places.
+- Keep a number's scope: if it is for the whole basin, say basin; never
+  narrow it to one state or region.
+- For a river, road, border or other route, list the places along it as
+  "<route> | course step <n> | <place>" in their real order from start to end.
+  That order is geography, not the creator's expression.
+- Merge duplicates.
 
 Return JSON only: {"facts": ["<subject> | <attribute> | <value>", ...]}
 
@@ -121,7 +129,9 @@ def extract_facts(client, nm, call_model=None, types=None,
             break
         print(f"[Rewrite] {len(bad)} note(s) carried their wording (attempt {attempt})")
     notes = [f for f in notes if f not in verbatim_runs(notes, transcript)]
-    random.shuffle(notes)     # their order is part of their expression
+    # Not shuffled: the first review (Penna, 29 Sep) showed a shuffled list
+    # sends the river to the sea in scene 3 and back upstream in scene 9. The
+    # course follows geography; the writer is still told to pick its own angle.
     return notes or None
 
 
@@ -134,10 +144,26 @@ def brief(notes):
 {body}
 
     These are raw facts about the topic, not a script. Build YOUR OWN video
-    from them: choose your own angle and hook, your own order and your own
-    ending. You may leave out weak facts, and you may add well-known facts
-    that are accurate and checkable. Every fact you state goes into "facts".
-    Do not write in the style of any other channel.
+    from them, as ONE story a viewer can follow:
+    - SCENE 1 IS A HOOK, not a textbook opening. Lead with the most surprising
+      fact, a contrast or a stake ("this dry river feeds 1.5 crore people") —
+      never "X originates at Y" as the first line.
+    - GEOGRAPHY RUNS ONE WAY. A river goes source -> mouth, a route start ->
+      end. Once the story reaches the sea or the end, it never goes back
+      upstream. Put basin-wide numbers before or after the journey, not in
+      the middle of it.
+    - Every linking word must be true: "यानी"/"इसीलिए" only when the line
+      really follows from the one before.
+    - Keep each fact's exact scope and relation (downstream of, in <district>,
+      the whole basin). Never turn "downstream of X" into "near X".
+    - THE LAST SCENE IS A PAYOFF: a comparison that makes a number feel real,
+      or the one thing to remember. Never end on a bare statistic.
+    - Labels: only names and numbers that scene's line SAYS OUT LOUD.
+    - Indian names in their standard Hindi spelling (as Hindi Wikipedia and
+      government sources write them), e.g. पापाग्नि, मायलावरम, सोमशिला.
+    - You may leave out weak facts and add well-known facts that are accurate
+      and checkable. Every fact you state goes into "facts". Do not write in
+      the style of any other channel.
 """
 
 
@@ -170,3 +196,74 @@ def check_originality(client, nm, segments, call_model=None, types=None,
     return ("Too close to the source video: " + "; ".join(parts)
             + ". Say those facts in a completely different way, with your own angle, "
               "comparison and order. Keep the facts, change everything else.")
+
+
+REVIEW_PROMPT = """
+You are a first-time viewer of a 60-90 second Hindi geography Short, and a
+careful editor. Judge the script below ONLY on these points and report
+concrete problems. Do not report style preferences.
+
+1. hook   - scene 1 gives no reason to keep watching (a plain textbook
+            statement such as "X originates at Y").
+2. order  - the geography jumps: e.g. a river reaches the sea, then the story
+            goes back upstream; or places are out of their real order.
+3. link   - a linking word claims a connection that is not there ("यानी",
+            "इसीलिए" when the line does not follow from the one before).
+4. fact   - a fact is wrong, or its scope/relation is distorted (e.g. a dam
+            that is downstream of a city described as near it; a basin-wide
+            number given as one region's). Use your own knowledge.
+5. cta    - the subscribe line promises something the video does not deliver
+            after it (e.g. "more secrets" when only a list follows).
+6. ending - the last scene ends on a bare number or fact with no payoff.
+7. spelling - an Indian name is not in its standard Hindi spelling.
+Also list every on-screen label that its scene's line does NOT say out loud
+(a name or number shown but not spoken in that scene).
+
+Return JSON only:
+{"problems": [{"scene": <n>, "kind": "<hook|order|link|fact|cta|ending|spelling>",
+               "fix": "<one sentence: what to change>"}],
+ "unspoken_labels": [{"scene": <n>, "label": "<label>"}]}
+
+SCRIPT (scene: spoken line  [labels]):
+{script}
+
+SUBSCRIBE LINE (inserted after scene {cta_after}): {cta}
+"""
+
+
+def viewer_review(client, data, call_model=None, types=None,
+                  models=("gemini-3.5-flash-lite",)):
+    """(retry reason or None, [(scene, label)] to drop). Never raises."""
+    segs = data.get("segments") or []
+    script = "\n".join(f"{i}: {s.get('text', '')}  {s.get('labels') or []}"
+                       for i, s in enumerate(segs, 1))
+    prompt = (REVIEW_PROMPT.replace("{script}", script)
+              .replace("{cta}", str(data.get("midroll_cta") or "(none)"))
+              .replace("{cta_after}", str(data.get("midroll_after") or "-")))
+    try:
+        out = _call(client, call_model, types, prompt, "Rewrite: viewer review", models)
+    except Exception as e:  # noqa: BLE001 — a quality pass, not a gate
+        print(f"[Review] could not run: {type(e).__name__}: {e}")
+        return None, []
+    probs = [p for p in (out.get("problems") or []) if isinstance(p, dict) and p.get("fix")]
+    drop = [(int(u["scene"]), str(u["label"])) for u in (out.get("unspoken_labels") or [])
+            if isinstance(u, dict) and str(u.get("scene", "")).isdigit() and u.get("label")]
+    for p in probs:
+        print(f"[Review] scene {p.get('scene')} {p.get('kind')}: {p.get('fix')}")
+    if not probs:
+        return None, drop
+    return ("A viewer review found problems: "
+            + " ".join(f"Scene {p.get('scene')} ({p.get('kind')}): {p.get('fix')}" for p in probs)
+            + " Fix exactly these and keep everything else."), drop
+
+
+def drop_labels(segments, drop):
+    """Remove labels the scene does not say. Returns how many were removed."""
+    n = 0
+    for scene, label in drop:
+        if 1 <= scene <= len(segments):
+            labs = segments[scene - 1].get("labels") or []
+            keep = [l for l in labs if l.strip().lower() != label.strip().lower()]
+            n += len(labs) - len(keep)
+            segments[scene - 1]["labels"] = keep
+    return n
