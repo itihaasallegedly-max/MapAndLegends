@@ -302,6 +302,107 @@ def _dump_raw(raw, err):
         pass
 
 
+# ------------------------------------------------------------ mid-roll CTA
+# The ask sits INSIDE an existing scene, after a finished sentence, around the
+# middle of the reel: no extra clip, no hard cut to a branding card, and at
+# most one step (usually +2s) on that one scene. The model is asked for it in
+# the prompt too, but a faithful translation leaves no room for it, so it is
+# placed here when the model did not.
+MIDROLL_CTA_HI = [
+    "ऐसी और कहानियों के लिए मैप एंड लेजेंड को सब्सक्राइब कर लीजिए।",
+    "नक्शा अभी बाकी है, सब्सक्राइब करके साथ चलते रहिए।",
+    "ये सफ़र अच्छा लग रहा है, तो चैनल सब्सक्राइब कर लीजिए।",
+    "आगे बढ़ने से पहले, मैप एंड लेजेंड को सब्सक्राइब कर लीजिए।",
+    "हर दिन एक नया नक्शा चाहिए, तो अभी सब्सक्राइब कीजिए।",
+]
+_CTA_WORDS = re.compile(r"सब्सक्राइब|subscribe|Subscribe", re.I)
+
+
+def insert_midroll_cta(data):
+    """Append one short subscribe line to a mid-reel scene. Returns the index or None."""
+    if os.getenv("MIDROLL_CTA", "1") == "0" or NARRATION_LANG != "hi":
+        return None
+    segs = data.get("segments") or []
+    if len(segs) < 4:
+        return None
+    total = sum(float(sg.get("seconds") or 0) for sg in segs)
+    t, starts = 0.0, []
+    for sg in segs:
+        starts.append(t)
+        t += float(sg.get("seconds") or 0)
+    # already there (the model wrote one) anywhere but the last scene
+    for i, sg in enumerate(segs[:-1]):
+        if _CTA_WORDS.search(str(sg.get("text", ""))):
+            print(f"[CTA] mid-roll already in scene {i + 1}")
+            return i
+    import hashlib
+    key = str(data.get("title") or data.get("upload_title") or "")
+    line = MIDROLL_CTA_HI[int(hashlib.md5(key.encode()).hexdigest(), 16) % len(MIDROLL_CTA_HI)]
+    n_cta = len(line.split())
+    best = None
+    for i, sg in enumerate(segs):
+        end = starts[i] + float(sg.get("seconds") or 0)
+        if i in (0, len(segs) - 1) or sg.get("_cta") or not (0.35 * total <= end <= 0.7 * total):
+            continue
+        text = str(sg.get("text", "")).rstrip()
+        if text.endswith(("...", "…")) or text.endswith("?"):
+            continue                      # a joke setup or a question: the next beat answers it
+        words = len(text.split()) + n_cta
+        sec = float(sg.get("seconds") or 0)
+        need = next((L for L in _PACE_LENGTHS if L >= sec and words / L <= min(MAX_WPS, FLOW_HINDI_WPS + 0.3)), None)
+        if need is None:
+            continue
+        added = need - sec
+        score = (added, abs(end - 0.5 * total))   # no extra seconds first, then nearest the middle
+        if best is None or score < best[0]:
+            best = (score, i, need)
+    if best is None:
+        # Every mid scene is full: give the line its own short scene that
+        # CONTINUES the previous shot (same picture, camera keeps drifting),
+        # so it plays as a breath in the story, not a cut to an ad.
+        mids = [i for i in range(1, len(segs) - 1)
+                if 0.35 * total <= starts[i] + float(segs[i].get("seconds") or 0) <= 0.7 * total
+                and not str(segs[i].get("text", "")).rstrip().endswith(("...", "…", "?"))]
+        if not mids:
+            print("[CTA] no mid-reel break for the subscribe line — skipped")
+            return None
+        i = min(mids, key=lambda k: abs(starts[k] + float(segs[k].get("seconds") or 0) - 0.5 * total))
+        L = 4 if n_cta / 4 <= FLOW_HINDI_WPS + 0.3 else 6
+        if total + L > PLATFORM_CAP_S:
+            print("[CTA] skipped: would pass the platform limit")
+            return None
+        prev = segs[i]
+        last_beat = (prev.get("per_second") or ["the same shot"])[-1]
+        new_seg = {
+            "text": line, "speaker": "NARRATOR (V.O.)", "seconds": float(L),
+            "narration_refs": [], "labels": [], "_midroll": True,
+            "video_prompt": (str(prev.get("video_prompt") or "").rstrip(".")
+                             + ". The same shot continues: the camera keeps drifting slowly, nothing new appears."),
+            "per_second": [f"continuing from: {last_beat}; slow drift"] * L,
+            "background": prev.get("background") or {},
+            "audio": {"ambience": (prev.get("audio") or {}).get("ambience", ""), "sfx": [],
+                      "voice": "warm, direct to the viewer, then straight back into the story"},
+        }
+        segs.insert(i + 1, new_seg)
+        data["segments"] = segs
+        print(f"[CTA] mid-roll as its own {L}s scene after scene {i + 1} "
+              f"(at ~{starts[i] + float(prev.get('seconds') or 0):.0f}s of {total + L:.0f}s): {line}")
+        return i + 1
+    (added, _), i, need = best
+    if total + added > PLATFORM_CAP_S:
+        print("[CTA] skipped: would pass the platform limit")
+        return None
+    sg = segs[i]
+    sg["text"] = str(sg["text"]).rstrip() + " " + line
+    if need != sg.get("seconds"):
+        sg["seconds"] = float(need)
+        if sg.get("per_second"):
+            sg["per_second"] = _resize_beats(sg["per_second"], int(need))
+    print(f"[CTA] mid-roll added to scene {i + 1} of {len(segs)} "
+          f"(+{added:.0f}s, at ~{starts[i]:.0f}s of {total + added:.0f}s): {line}")
+    return i
+
+
 _DEVA_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
 _NUM_RE = re.compile(r"\d+(?:[.,]\d+)*")
 
@@ -1222,7 +1323,7 @@ def generate_script_prompt2(topic_spec):
       scene's "labels". A script that loses one of their numbers is rejected.
     - {words_rule} Short, punchy sentences — about 12 words for a 6-second scene, 16 for 8 seconds, 20 for 10. The clip is cut to the line's length, so a line much shorter than its scene leaves dead air.
     - Write about the topic presented in the video.
-    - CRITICAL CTA INSTRUCTION: Insert a smooth mid-roll "Like, Comment, and Subscribe" CTA (Call to Action) somewhere in the middle of the script. Do NOT put it at the very end. The transition into the CTA must be poetic and naturally woven into the content's flow, as smooth as a poem.
+    - Do NOT write any like/comment/subscribe line anywhere: one short mid-roll subscribe line is woven into a mid-reel scene automatically after you answer.
     - Every scene's "seconds" must be exactly 4, 6, 8 or 10. No other value —
       not 5, not 12, not 15. These are the lengths a text-to-video model
       actually generates, so a scene is one generation and never a join.
@@ -1420,6 +1521,7 @@ def generate_script_prompt2(topic_spec):
                 print(f"[SoundMap] model still dropped {placed} — placed by time")
             if sm:
                 data["sound_map"] = sm
+            insert_midroll_cta(data)
             break
         except ScriptGenerationError as err:
             if script_try == STORY_RETRIES:
