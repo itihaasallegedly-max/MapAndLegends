@@ -81,12 +81,18 @@ def record(slug, reel, result):
             wait = BACKOFF_H[entry["attempts"] - 1]
             entry["next_try"] = (_now() + datetime.timedelta(hours=wait)).isoformat(timespec="seconds")
     save(slug, state)
+    try:   # the permanent record, outside outputs/ (core/published_ledger.py)
+        from core import published_ledger
+        published_ledger.update(slug, state.get("platforms"))
+    except Exception as e:  # noqa: BLE001 — never fail a publish over the ledger
+        print(f"[ledger] could not update published.json: {e}")
     if not pending_platforms(state) and not state.get("abandoned"):
         cleanup_published(slug)
     return state
 
 
-KEEP_SUFFIXES = ("_publish.json", "_script.json", "_topic_spec.json")
+KEEP_SUFFIXES = ("_publish.json", "_script.json", "_topic_spec.json", "_factcheck.json",
+                 "source_transcript.txt")
 
 
 def is_live_everywhere(slug):
@@ -94,7 +100,7 @@ def is_live_everywhere(slug):
     return bool(state) and not state.get("abandoned") and not pending_platforms(state)
 
 
-def cleanup_published(slug):
+def cleanup_published(slug, reason="live everywhere"):
     """Once the reel is live on every platform, delete everything local for it:
     the reel, the Flow clips, the downloaded competitor video, stitch leftovers.
     Only three small JSON records stay (a few KB): the publish record (platform
@@ -121,7 +127,7 @@ def cleanup_published(slug):
                 os.remove(path)
         except OSError as e:
             print(f"[cleanup] could not delete {name}: {e}")
-    print(f"[cleanup] {slug}: live everywhere, deleted local media ({freed / 1e6:.1f} MB freed)")
+    print(f"[cleanup] {slug}: {reason}, deleted local media ({freed / 1e6:.1f} MB freed)")
     return freed
 
 

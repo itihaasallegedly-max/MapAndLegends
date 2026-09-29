@@ -64,25 +64,30 @@ def _sheet_gate(output_dir, slug):
 
 
 def cleanup_old_outputs(days=30):
-    """Automatically deletes output folders older than the specified number of days."""
+    """Frees disk from output folders older than `days`: deletes the MEDIA
+    (videos, clips, images) but keeps each folder's small records (publish
+    state, script, topic spec, fact-check, transcript). It used to delete the
+    whole folder, which erased the only record of where a video went live;
+    published.json now keeps that permanently too. A folder with an upload
+    still waiting to retry is left alone entirely — the retry needs the reel."""
     import time
-    import shutil
     outputs_dir = os.path.join(BASE_DIR, "outputs")
     if not os.path.exists(outputs_dir):
         return
-    now = time.time()
-    cutoff = now - (days * 86400)
+    cutoff = time.time() - (days * 86400)
     for folder_name in os.listdir(outputs_dir):
         folder_path = os.path.join(outputs_dir, folder_name)
-        # Never delete things that aren't directories, and skip __pycache__ etc if present
-        if os.path.isdir(folder_path) and not folder_name.startswith("."):
-            try:
-                mtime = os.path.getmtime(folder_path)
-                if mtime < cutoff:
-                    print(f"[Cleanup] Deleting old output folder: {folder_name}")
-                    shutil.rmtree(folder_path)
-            except Exception as e:
-                print(f"[Cleanup] Failed to delete {folder_name}: {e}")
+        if not os.path.isdir(folder_path) or folder_name.startswith((".", "_")):
+            continue
+        try:
+            if os.path.getmtime(folder_path) >= cutoff:
+                continue
+            state = publish_queue.load(folder_name)
+            if state and not state.get("abandoned") and publish_queue.pending_platforms(state):
+                continue
+            publish_queue.cleanup_published(folder_name, reason=f"older than {days} days, records kept")
+        except Exception as e:  # noqa: BLE001
+            print(f"[Cleanup] Failed on {folder_name}: {e}")
 
 
 def route_to_hold_queue(topic_spec, script_data, fact_check_result):
