@@ -65,10 +65,42 @@ def competitor_title(url):
     return re.sub(r"\s+", " ", title).strip(" -|:")
 
 
+# CONTENT_MODE=original (default, 29 Sep 2026): topics come from our own
+# backlog in topics.json (weighted draw, SHA1 dedup) and NO competitor video is
+# downloaded — the script is written from the subject alone. Remaking other
+# creators' Shorts is reused content under YouTube's monetization policy and a
+# copyright risk. CONTENT_MODE=competitor restores the old scrape-and-remake draw.
+CONTENT_MODE = os.getenv("CONTENT_MODE", "original").strip().lower()
+TOPICS = BASE_DIR / "topics.json"
+
+
+def draw_backlog_topic(mark_used=False):
+    """Weighted draw from our own topics.json backlog, skipping used topics."""
+    import json
+    data = json.loads(TOPICS.read_text(encoding="utf-8"))
+    backlog = data.get("backlog") or []
+    used = set(LEDGER.read_text().split()) if LEDGER.exists() else set()
+    fresh = [t for t in backlog if slug_hash(t) not in used]
+    if not fresh:
+        raise SystemExit("Backlog exhausted — every topic in topics.json has been used.")
+    weights = [max(float(t.get("weight") or 0), 0.01) for t in fresh]
+    pick = dict(random.choices(fresh, weights=weights, k=1)[0])
+    pick.pop("url", None)
+    pick["slug_hash"] = slug_hash(pick)
+    if mark_used:
+        record_topic_used(pick)
+    print(f"[Stage 2 Draw] Backlog topic ({len(fresh)} unused): {pick['topic']} "
+          f"[{pick.get('series', '?')}]")
+    return pick
+
+
 def draw_daily_topic(mark_used=False):
     """
-    Automatically scrapes the latest competitor Shorts and picks one that hasn't been used.
+    Our own backlog by default (CONTENT_MODE=original). With CONTENT_MODE=competitor,
+    scrapes the latest competitor Shorts and picks one that hasn't been used.
     """
+    if CONTENT_MODE != "competitor":
+        return draw_backlog_topic(mark_used=mark_used)
     unseen = fetch_unseen_competitor_shorts()
     
     if not unseen:

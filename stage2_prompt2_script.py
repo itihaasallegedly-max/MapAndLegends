@@ -101,7 +101,7 @@ HINDI_BRIEF = """
 # same lines, same order, nothing added or dropped. Our own story rules (hook,
 # linking words, payoff) do not apply then: their script is the script.
 # NARRATION_MODE=free restores the old "write your own story" behaviour.
-NARRATION_MODE = os.getenv("NARRATION_MODE", "faithful").strip().lower()
+NARRATION_MODE = os.getenv("NARRATION_MODE", "free").strip().lower()
 MAX_DROPPED_LINES = 0.10     # on the last try, accept at most 10% of their lines missing
 
 HINDI_FAITHFUL_BRIEF = HINDI_BRIEF.replace(
@@ -1438,7 +1438,7 @@ def generate_script_prompt2(topic_spec):
       "upload_title": "<an SEO-friendly video title optimized for YouTube/Instagram, max 60 characters>",
       "upload_hashtags": ["<seo-friendly tag 1>", "<seo-friendly tag 2>", "<seo-friendly tag 3>", "<seo-friendly tag 4>", "<seo-friendly tag 5>"],
       "facts": ["<every discrete factual claim made, one per string>"],
-      "original_content_link": "<the exact link to the competitor video provided (e.g. {topic_spec.get('url', 'https://www.youtube.com/@DailyGeoMap')})>"
+      "original_content_link": "{topic_spec.get('url', '')}"
     }}
 
     Rules:
@@ -1455,11 +1455,11 @@ def generate_script_prompt2(topic_spec):
     - LABELS are a place, a dish, a landmark, or a number the narrator
       actually says. No filler counts ("4 Dishes", "3 Places") unless the
       narrator says that number.
-    - NUMBERS: every number the competitor says (distances, years, discharge,
+    - NUMBERS: every number the narration says (distances, years, discharge,
       counts, percentages) is kept — in the spoken line AND as digits in that
       scene's "labels". A script that loses one of their numbers is rejected.
     - {words_rule} Short, punchy sentences — about 12 words for a 6-second scene, 16 for 8 seconds, 20 for 10. The clip is cut to the line's length, so a line much shorter than its scene leaves dead air.
-    - Write about the topic presented in the video.
+    - Write about YOUR TOPIC above. The script is your own: original wording, your own structure and angle.
     - MID-ROLL SUBSCRIBE LINE: write ONE fresh line in "midroll_cta" — everyday spoken Hindi, at most 10 words, asking the viewer to subscribe to मैप एंड लेजेंड (or "चैनल"), written for THIS video: it picks up from what the scene before it just revealed and leans into what comes next, so it sounds like part of the story, not an ad. Never generic, never a stock phrase. Put the scene number it follows (a scene around the middle that ends on a full stop, not a question or a joke setup) in "midroll_after". Do not put any like/comment/subscribe words in the scenes' "text" yourself.{_recent_cta_note()}
     - Every scene's "seconds" must be exactly 4, 6, 8 or 10. No other value —
       not 5, not 12, not 15. These are the lengths a text-to-video model
@@ -1557,8 +1557,8 @@ def generate_script_prompt2(topic_spec):
     - "music" describes instruments and movement, and must stay out of the way
       of the read. Name what it does at this point — enters, holds, drops out.
     - "sfx" lists spot effects with the second each lands on, relative to the
-      start of THIS scene. Every competitor sound assigned to this scene goes
-      here with its "ref". Beyond those, add one only where a cut or a movement
+      start of THIS scene. If a reference sound list is given above, each sound
+      assigned to this scene goes here with its "ref". Beyond those, add one only where a cut or a movement
       wants punctuation; never invent filler.
     - "voice" names only the word that carries the emphasis. The narrator is
       the SAME man at the SAME calm pace and pitch in every scene: never ask
