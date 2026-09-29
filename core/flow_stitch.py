@@ -67,7 +67,8 @@ MUSIC_STYLE = os.getenv("FLOW_MUSIC_STYLE",
     "one slow, calm ambient string pad in a minor key with a soft low piano note now and then, "
     "no drums, no beat, no melody that competes with the voice, the SAME music in every clip")
 NEG = ("full-bleed edge-to-edge {orient} frame, no border, no letterbox, no on-screen "
-       "text, no captions, no subtitles, no watermark, no logos")
+       "text, no map labels, no letters or numbers anywhere, no captions, no subtitles, "
+       "no watermark, no logos")
 
 
 def log(*a):
@@ -149,7 +150,11 @@ def build_prompt(seg, style="", index=1, total=1, seconds=None, music_style=None
     lang = "Hindi" if NARRATION_LANG == "hi" else "English"
     wide = aspect == "16:9"
     parts = ["Horizontal 16:9 widescreen, composed for the full width of a landscape frame."
-             if wide else "Vertical 9:16.", f"{seconds}-second clip."]
+             if wide else "Vertical 9:16.", f"{seconds}-second clip.",
+             # 29 Sep: Flow's own map text came out misspelled ("Ghapra",
+             # "MANFAJPUR", invented Hindi). Labels are overlaid at stitch time.
+             "The picture contains NO writing at all: no letters, words, numbers, labels, "
+             "place names, map text, titles or signs anywhere in the frame."]
     if text:
         speak_by = max(1.0, seconds - 0.5)
         parts.append(
@@ -232,6 +237,7 @@ def build_job(script_data, output_dir, slug, aspect="9:16"):
         clips.append({"prompt": build_prompt(seg, style, index=i, total=n, seconds=secs, music_style=music_style, aspect=aspect),
                       "seconds": secs,
                       "is_cta": seg.get("_cta", False),
+                      "labels": [str(x).strip() for x in (seg.get("labels") or []) if str(x).strip()][:3],
                       "out": str(flow_dir / f"{i:02d}.mp4")})
     job_path = Path(naming.path(output_dir, slug, "flow_job"))
     if aspect == "16:9":
@@ -283,6 +289,48 @@ def _handle_overlay(path, size=(W, H)):
     tw = d.textlength(handle, font=font)
     d.text(((w - tw) / 2, h - (120 if h > w else 80)), handle, font=font, fill=(217, 169, 76, 235),
            stroke_width=3, stroke_fill=(10, 23, 40, 200))
+    img.save(path)
+    return path
+
+
+def _label_overlay(path, labels, size=(W, H), base=None):
+    """The handle footer (if any) plus up to three label pills near the top,
+    drawn by us so place names and numbers are spelled right. Latin letters
+    only unless Pillow has raqm: without it Devanagari comes out unshaped."""
+    labels = [l for l in (labels or []) if l][:3]
+    if not labels:
+        return base
+    try:
+        from PIL import Image, ImageDraw, ImageFont, features
+    except ImportError:
+        return base
+    if not features.check("raqm"):
+        labels = [l for l in labels if not re.search(r"[\u0900-\u097F]", l)]
+        if not labels:
+            return base
+    w, h = size
+    img = Image.open(base).convert("RGBA") if base else Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    size_px = 58 if h > w else 46
+    font = None
+    for f in ("/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+              "/System/Library/Fonts/Supplemental/Kohinoor.ttc",
+              "/System/Library/Fonts/Helvetica.ttc",
+              "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"):
+        if os.path.exists(f):
+            font = ImageFont.truetype(f, size_px)
+            break
+    font = font or ImageFont.load_default()
+    y = int(h * (0.12 if h > w else 0.08))
+    for text in labels:
+        tw = d.textlength(text, font=font)
+        pad_x, pad_y = 30, 16
+        x0 = (w - tw) / 2 - pad_x
+        box = (x0, y, x0 + tw + 2 * pad_x, y + size_px + 2 * pad_y)
+        d.rounded_rectangle(box, radius=(size_px + 2 * pad_y) // 2, fill=(10, 23, 40, 205),
+                            outline=(217, 169, 76, 255), width=4)
+        d.text(((w - tw) / 2, y + pad_y - 4), text, font=font, fill=(242, 214, 150, 255))
+        y += size_px + 2 * pad_y + 18
     img.save(path)
     return path
 
@@ -367,7 +415,10 @@ def stitch(clips, reel_path, work_dir, size=(W, H)):
     vids, auds, total = [], [], 0.0
     for k, src in enumerate(clips, 1):
         is_cta = src.get('is_cta') if isinstance(src, dict) else False
+        labels = src.get('labels') if isinstance(src, dict) else None
         src = Path(src['out']) if isinstance(src, dict) else Path(src)
+        clip_overlay = _label_overlay(work / f"ov{k:02d}.png", labels, size, overlay)
+        overlay_k = clip_overlay
         d = probe_duration(src)
         if d <= 0.2:
             raise AssetGenerationError(f"{src.name} is empty ({d:.2f}s)")
@@ -377,15 +428,15 @@ def stitch(clips, reel_path, work_dir, size=(W, H)):
         base = f"[0:v]scale={sw}:{sh}:force_original_aspect_ratio=increase,crop={sw}:{sh},fps={FPS},setsar=1"
         logo_path = Path("brand/logo.png")
         if is_cta and logo_path.exists():
-            if overlay:
-                cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-i", str(overlay), "-i", str(logo_path),
+            if overlay_k:
+                cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-i", str(overlay_k), "-i", str(logo_path),
                        "-filter_complex", f"{base}[b];[b][1:v]overlay=0:0[b2];[2:v]scale=500:-1[logo];[b2][logo]overlay=(W-w)/2:(H-h)*0.40,format=yuv420p[o]", "-map", "[o]"]
             else:
                 cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-i", str(logo_path),
                        "-filter_complex", f"{base}[b];[1:v]scale=500:-1[logo];[b][logo]overlay=(W-w)/2:(H-h)*0.40,format=yuv420p[o]", "-map", "[o]"]
         else:
-            if overlay:
-                cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-i", str(overlay),
+            if overlay_k:
+                cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-i", str(overlay_k),
                        "-filter_complex", f"{base}[b];[b][1:v]overlay=0:0,format=yuv420p[o]", "-map", "[o]"]
             else:
                 cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src),

@@ -302,6 +302,32 @@ def _dump_raw(raw, err):
         pass
 
 
+_DEVA_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
+_NUM_RE = re.compile(r"\d+(?:[.,]\d+)*")
+
+
+def _nums(text):
+    """Numbers in a string, commas dropped: '2,500' -> '2500', '21.5' kept."""
+    return {n.replace(",", "") for n in _NUM_RE.findall(str(text).translate(_DEVA_DIGITS))}
+
+
+def missing_numbers(segments, nm):
+    """[(line id, [numbers])] for competitor numbers no scene carries as digits.
+    Checked against labels + text of all scenes, not just the referencing one:
+    a number moved one scene over is fine, a number gone is not."""
+    have = set()
+    for sg in segments:
+        have |= _nums(sg.get("text", ""))
+        for lb in sg.get("labels") or []:
+            have |= _nums(lb)
+    out = []
+    for ln in nm.get("lines") or []:
+        want = sorted(_nums(ln.get("text", "")) - have)
+        if want:
+            out.append((ln.get("id", "?"), want))
+    return out
+
+
 MAX_WPS = 3.4
 _PACE_LENGTHS = (4, 6, 8, 10)
 
@@ -1138,7 +1164,8 @@ def generate_script_prompt2(topic_spec):
           "speaker": "NARRATOR (V.O.)",
           {refs_field}
           "seconds": 8,
-          "video_prompt": "<the one continuous shot, in a sentence or two>",
+          "labels": ["<0-3 short on-screen labels IN ENGLISH LETTERS that we overlay ourselves: the place names shown and EVERY number this scene's line says, as digits with unit, e.g. 'Kosi River', '21 lakh L/s', '450 km'>"],
+          "video_prompt": "<the one continuous shot, in a sentence or two — NO written text in the picture>",
           "per_second": [
             "<second 0-1: what is in frame as the take opens, where the camera is>",
             "<second 1-2: what changes>",
@@ -1184,6 +1211,15 @@ def generate_script_prompt2(topic_spec):
     }}
 
     Rules:
+    - NO TEXT IN THE PICTURE. The video model misspells every word it draws
+      ("Ghapra", "MANFAJPUR"). "video_prompt", "per_second" and "background"
+      must never ask for written words, labels, place names, numbers, titles,
+      signs or map text — show places with pins, glowing river lines, colour
+      fills, icons and camera moves only. Names and numbers go in "labels";
+      we put those on screen ourselves, spelled correctly.
+    - NUMBERS: every number the competitor says (distances, years, discharge,
+      counts, percentages) is kept — in the spoken line AND as digits in that
+      scene's "labels". A script that loses one of their numbers is rejected.
     - {words_rule} Short, punchy sentences — about 12 words for a 6-second scene, 16 for 8 seconds, 20 for 10. The clip is cut to the line's length, so a line much shorter than its scene leaves dead air.
     - Write about the topic presented in the video.
     - CRITICAL CTA INSTRUCTION: Insert a smooth mid-roll "Like, Comment, and Subscribe" CTA (Call to Action) somewhere in the middle of the script. Do NOT put it at the very end. The transition into the CTA must be poetic and naturally woven into the content's flow, as smooth as a poem.
@@ -1357,6 +1393,15 @@ def generate_script_prompt2(topic_spec):
                     print(f"[NarrationMap] accepted with {len(dropped)} line(s) not referenced"
                           + (f"; {problem}" if problem else ""))
                 data["narration_map"] = nm
+            if nm:
+                lost = missing_numbers(data["segments"], nm)
+                if lost and script_try < STORY_RETRIES:
+                    raise ScriptGenerationError(
+                        "Numbers from the competitor are missing: "
+                        + "; ".join(f"{lid} says {', '.join(ns)}" for lid, ns in lost)
+                        + ". Keep each one in the spoken line and as digits in that scene's labels.")
+                if lost:
+                    print(f"[Prompt 2] accepted with numbers missing: {lost}")
             if faithful and window:
                 budget = int(window[1] * FLOW_HINDI_WPS)
                 total = sum(len(str(sg.get("text", "")).split()) for sg in data["segments"])
