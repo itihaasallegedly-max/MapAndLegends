@@ -27,6 +27,10 @@ NUM_WORDS = re.compile(
     r"लाख|करोड़|करोड|पच्चीस|पैंतीस|पचपन|शताब्दी|सदी|प्रतिशत|किलोमीटर|मीटर|वर्ग")
 
 
+_STOP = set("""में के की का को से पर और है हैं था थी थे ने भी तो ही यह वह इस उस एक इसी इन उन जो कि
+तक लिए साथ बाद पहले रूप तरह वाला वाली वाले""".split())
+
+
 def dev_skeleton(text):
     out = []
     for ch in str(text).replace(_NUKTA, ""):
@@ -62,7 +66,10 @@ def spoken(label, hindi_text):
         return bool(NUM_WORDS.search(str(hindi_text)))
     # Word by word, as a prefix: द्वारकाधीश (dvrkds) says Dwarka (dvrk), but
     # समुद्र (smdr) must not say Modhera (mdr) just because it contains it.
-    toks = [dev_skeleton(w) for w in re.findall(r"[\u0900-\u097F]+", str(hindi_text))]
+    # Postpositions and helpers never start a name: "में गंगा" (mn+gng) must not
+    # say "mango" (National Symbols reel, 29 Sep).
+    toks = [dev_skeleton(w) for w in re.findall(r"[\u0900-\u097F]+", str(hindi_text))
+            if w not in _STOP]
     toks = [t for t in toks if t]
     spans = toks + [a + b for a, b in zip(toks, toks[1:])]
     # EVERY distinctive word of the label must be said ("Bhagwan Swaminarayan"

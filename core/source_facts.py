@@ -201,6 +201,11 @@ def brief(notes):
     - The river's SOURCE is the "source" note, never the place where it
       enters a state. Never state a direction, turn or relation ("turns
       north") that is not in the notes or certainly true.
+    - IF SCENE 1 ASKS OR PROMISES SOMETHING, THE VIDEO MUST DELIVER IT, by name.
+      "Not every national symbol is official" means the video later names which
+      ones are not (lotus, mango, banyan...). Never open on a promise you drop.
+    - Pictures show each subject in its real setting: a river dolphin in a
+      river, never in sea waves; the animal itself clearly visible.
     - THE LAST SCENE IS A PAYOFF: a comparison that makes a number feel real,
       or the one thing to remember. Never end on a bare statistic.
     - EVERY SCENE CARRIES ONE SPECIFIC DETAIL from the notes: a number, a date,
@@ -266,6 +271,9 @@ concrete problems. Do not report style preferences.
             after it (e.g. "more secrets" when only a list follows).
 6. ending - the last scene ends on a bare number or fact with no payoff.
 7. spelling - an Indian name is not in its standard Hindi spelling.
+8. promise - scene 1 asks a question or promises something ("not all symbols
+            are official") that the rest of the video never answers or shows.
+            This is the worst failure: the viewer stayed for nothing.
 Also list every on-screen label that its scene's line does NOT say out loud
 (a name or number shown but not spoken in that scene). Labels are in English
 letters and the narration is Hindi: a label IS spoken when the line says the
@@ -274,7 +282,7 @@ number in Hindi words (25 m = पच्चीस मीटर). Only list a labe
 number is absent from that scene's line.
 
 Return JSON only:
-{"problems": [{"scene": <n>, "kind": "<hook|order|link|fact|cta|ending|spelling>",
+{"problems": [{"scene": <n>, "kind": "<hook|order|link|fact|cta|ending|spelling|promise>",
                "fix": "<one sentence: what to change>"}],
  "unspoken_labels": [{"scene": <n>, "label": "<label>"}]}
 

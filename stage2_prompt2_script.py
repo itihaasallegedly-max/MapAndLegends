@@ -1847,7 +1847,9 @@ def generate_script_prompt2(topic_spec):
                 # grounded fact-check below is the real gate for facts.
                 review, unspoken, probs = source_facts.viewer_review(
                     client, data, call_model=model_client.call_model, types=types)
-                blocking = [p for p in probs if str(p.get("kind")).lower() == "fact"]
+                # A wrong fact or a broken promise (scene 1 asks something the
+                # video never answers) blocks; style notes do not.
+                blocking = [p for p in probs if str(p.get("kind")).lower() in ("fact", "promise")]
                 if review and review_rounds == 0 and script_try == limit and limit == STORY_RETRIES:
                     # The review first ran on the last try (Gujarat, 29 Sep): its
                     # hook/ending notes would only be filed, never acted on. One
@@ -1859,7 +1861,7 @@ def generate_script_prompt2(topic_spec):
                     raise ScriptGenerationError(review)
                 if blocking:
                     raise ScriptGenerationError(
-                        f"Viewer review still reports a wrong fact after {STORY_RETRIES} tries: {review}")
+                        f"Viewer review still reports a wrong fact or an unkept promise after {STORY_RETRIES} tries: {review}")
                 if review:
                     _LENIENT["notes"].append(review)
                     print("[Review] style notes accepted after one revision")
