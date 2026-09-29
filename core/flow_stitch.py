@@ -180,11 +180,10 @@ def build_prompt(seg, style="", index=1, total=1, seconds=None, music_style=None
                      "blended flags; at most three flags on screen at once, large and clear.")
     # 29 Sep: the French Guiana reel showed India's State Emblem with a garbled
     # motto, rupee notes and a passport while the line was about France.
-    parts.append("SYMBOLS: never draw a national emblem, state seal, coat of arms, crest, "
-                 "official stamp, passport, ID card, certificate, banknote or coin. Show only "
-                 "places, maps, landscapes, people and objects that belong to the place this "
-                 "line is about; never symbols of any other country (no Indian symbols unless "
-                 "the line is about India).")
+    parts.append("SYMBOLS: any flag, national emblem, coat of arms, currency, passport or "
+                 "landmark shown must be the real one of the country or place this line is "
+                 "about, drawn accurately; never a symbol, currency or document of any other "
+                 "country (no Indian symbols unless the line is about India).")
     if seg.get("_avoid"):
         parts.append(str(seg["_avoid"]))
     neg_prompt = NEG.format(orient="horizontal" if wide else "vertical")
@@ -722,8 +721,8 @@ VISUAL_MAX_REGEN = int(os.getenv("VISUAL_MAX_REGEN", "4"))
 
 
 def _check_visuals(clips, job_path, script_data):
-    """Stop emblems, documents, money, wrong-country symbols, stray writing and
-    pictures that contradict the line from reaching an upload.
+    """Stop wrong-country or inaccurate symbols, garbled writing and pictures
+    that contradict the line from reaching an upload.
 
     Each raw Flow clip is shown to a vision model with its line. A failing clip
     is regenerated once with the problem named in its prompt (first take kept as
@@ -763,7 +762,7 @@ def _check_visuals(clips, job_path, script_data):
     if not bad:
         return
     if len(bad) > VISUAL_MAX_REGEN:
-        raise AssetGenerationError(f"visual check: {len(bad)} clips show emblems/wrong symbols/"
+        raise AssetGenerationError(f"visual check: {len(bad)} clips show wrong symbols/garbled "
                                    f"text (limit {VISUAL_MAX_REGEN} regenerations) — not publishing")
     job = json.loads(Path(job_path).read_text(encoding="utf-8"))
     todo = []

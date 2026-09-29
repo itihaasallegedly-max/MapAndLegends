@@ -7,12 +7,12 @@ three frames of each raw clip (before our labels/locator are overlaid) go to a
 Gemini vision model together with the line spoken over them, and it reports
 anything a viewer would call wrong.
 
-Blocking kinds: emblem (national emblem, state seal, coat of arms, crest,
-official stamp), document (passport, ID, certificate, official paper), money
-(banknotes or coins), wrong_country (a symbol, flag, currency or landmark of a
-country the line is not about), contradiction (the picture shows something the
-line does not say, or the opposite of it), text (readable or garbled writing
-that is large enough to notice).
+Symbols are fine when they are the right ones: France's flag, emblem, the euro
+or a French passport in a clip about France. Blocking kinds:
+wrong_symbol (a flag, emblem, seal, currency, document or landmark of a country
+the line is not about, or a real one drawn wrong), contradiction (the picture
+shows something the line does not say, or the opposite), text (garbled,
+misspelled or invented writing large enough to notice).
 """
 import json
 import os
@@ -21,21 +21,19 @@ import subprocess
 from pathlib import Path
 
 MODEL = os.getenv("VISION_CHECK_MODEL", "gemini-3.5-flash-lite")
-BLOCKING = {"emblem", "document", "money", "wrong_country", "contradiction", "text"}
+BLOCKING = {"wrong_symbol", "contradiction", "text"}
 
 PROMPT = """You check one short clip of a Hindi geography video before it is published.
 You see {n} frames taken across the clip. The video is about: {topic}
 The narrator says over this clip (Hindi): "{line}"
 
 Report ONLY real problems a viewer would notice:
-- emblem: any national emblem, state emblem, lion capital, seal, coat of arms, government crest or official stamp
-- document: a passport, ID card, certificate, visa or other official paper
-- money: banknotes or coins of any country
-- wrong_country: a flag, symbol, currency, landmark or map of a country or place the line and the topic are NOT about (e.g. Indian symbols in a clip about France)
+- wrong_symbol: a flag, national emblem, seal, coat of arms, currency, passport/document or landmark that belongs to a country or place the line and the topic are NOT about (e.g. India's emblem or rupees in a clip about France), or a real one drawn clearly wrong (wrong colours, garbled design)
 - contradiction: the picture clearly shows something the line does not say, or the opposite of it
-- text: readable or garbled letters, words or numbers that are large enough to notice (ignore tiny unreadable specks)
+- text: garbled, misspelled or invented letters or words large enough to notice (ignore tiny specks and correct real writing)
 
-A plain map, landscape, people, animals, buildings or a correct flag of the place the line names are fine.
+Correct symbols of the place the line is about (its real flag, emblem, currency, passport, landmarks) are FINE — do not report them.
+A plain map, landscape, people, animals or buildings are fine.
 Return JSON only: {{"problems": [{{"kind": "<one of the kinds>", "what": "<short English description>"}}]}}
 Return {{"problems": []}} if the clip is fine."""
 
@@ -102,4 +100,5 @@ def avoid_line(problems):
     """A sentence appended to the Flow prompt when the clip is regenerated."""
     what = "; ".join(p["what"] for p in problems if p.get("what"))[:300]
     return ("AVOID (the previous take was rejected for this): " + what + ". "
-            "Show no emblems, seals, crests, passports, documents, banknotes, coins or writing.")
+            "Any flag, emblem, currency or document shown must be the real one of the place "
+            "this line is about, with no garbled writing.")
