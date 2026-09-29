@@ -39,6 +39,9 @@ Rules:
   "north of", "in <district>" exactly as stated. Never merge two places.
 - Keep a number's scope: if it is for the whole basin, say basin; never
   narrow it to one state or region.
+- For a river, ALWAYS include "<river> | source | <place, district, state>"
+  and "<river> | mouth | <place>" whenever the transcript says where it
+  starts and ends. Where it ENTERS a state is not its source.
 - For a river, road, border or other route, list the places along it as
   "<route> | course step <n> | <place>" in their real order from start to end.
   That order is geography, not the creator's expression.
@@ -117,22 +120,56 @@ def extract_facts(client, nm, call_model=None, types=None,
     transcript = transcript_text(nm)
     if not transcript.strip():
         return None
-    notes = []
-    for attempt in (1, 2):
-        extra = ("" if attempt == 1 else
-                 "\nYOUR LAST NOTES COPIED THEIR WORDING. Rewrite as subject | attribute | value data.\n")
+    notes, extra = [], ""
+    for attempt in (1, 2, 3):
         data = _call(client, call_model, types, FACTS_PROMPT + extra + transcript,
                      "Rewrite: fact notes", models)
         notes = [" ".join(str(f).split()) for f in (data.get("facts") or []) if str(f).strip()]
         bad = verbatim_runs(notes, transcript)
-        if not bad:
+        lost = missing_endpoints(notes, transcript)
+        if not bad and not lost:
             break
-        print(f"[Rewrite] {len(bad)} note(s) carried their wording (attempt {attempt})")
+        extra = "\n"
+        if bad:
+            print(f"[Rewrite] {len(bad)} note(s) carried their wording (attempt {attempt})")
+            extra += "YOUR LAST NOTES COPIED THEIR WORDING. Rewrite as subject | attribute | value data.\n"
+        if lost:
+            print(f"[Rewrite] notes dropped the {' and '.join(lost)} (attempt {attempt})")
+            extra += (f"YOUR LAST NOTES DROPPED THE {' AND '.join(x.upper() for x in lost)}. The transcript "
+                      f"states it: add it as '<name> | {lost[0]} | <place>'.\n")
+    else:
+        if lost:
+            raise ValueError(f"fact notes still missing the {' and '.join(lost)} after 3 tries")
     notes = [f for f in notes if f not in verbatim_runs(notes, transcript)]
     # Not shuffled: the first review (Penna, 29 Sep) showed a shuffled list
     # sends the river to the sea in scene 3 and back upstream in scene 9. The
     # course follows geography; the writer is still told to pick its own angle.
     return notes or None
+
+
+# Only phrasing that is about where a river starts or ends. "begins in March"
+# or "a coastline on the Bay of Bengal" must not demand a source or a mouth.
+_SOURCE_WORDS = re.compile(r"\b(originat\w*|rises (at|in|from)|has its source|its source (is|at|in|lies))\b", re.I)
+_MOUTH_WORDS = re.compile(
+    r"\b((empt\w*|drains?|falls?|flows?|discharges?|ends? its journey|ending its journey|"
+    r"merges?)\s+(in|into)\s+the\s+(bay|sea|ocean|arabian|gulf|rann)|its mouth|river mouth)\b", re.I)
+
+
+def missing_endpoints(notes, transcript):
+    """['source'] / ['mouth'] when the transcript states it and no note carries it.
+
+    The Penna notes (29 Sep) went straight to 'course step 2', and the writer
+    then made the river rise in the district where it merely enters a state.
+    """
+    lost = []
+    low = [n.lower() for n in notes]
+    if _SOURCE_WORDS.search(transcript) and not any(
+            re.search(r"\|\s*(source|origin|originates?|rises?|course step 1)\b", n) for n in low):
+        lost.append("source")
+    if _MOUTH_WORDS.search(transcript) and not any(
+            re.search(r"\|\s*(mouth|ends?|end point|endpoint|drains into|empties into|outlet)\b", n) for n in low):
+        lost.append("mouth")
+    return lost
 
 
 def brief(notes):
@@ -156,6 +193,9 @@ def brief(notes):
       really follows from the one before.
     - Keep each fact's exact scope and relation (downstream of, in <district>,
       the whole basin). Never turn "downstream of X" into "near X".
+    - The river's SOURCE is the "source" note, never the place where it
+      enters a state. Never state a direction, turn or relation ("turns
+      north") that is not in the notes or certainly true.
     - THE LAST SCENE IS A PAYOFF: a comparison that makes a number feel real,
       or the one thing to remember. Never end on a bare statistic.
     - Labels: only names and numbers that scene's line SAYS OUT LOUD.

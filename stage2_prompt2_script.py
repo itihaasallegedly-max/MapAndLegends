@@ -1283,8 +1283,11 @@ def generate_script_prompt2(topic_spec):
                                           call_model=model_client.call_model, types=types)
         if not source_nm:
             raise ScriptGenerationError("Rewrite mode: could not transcribe the source video.")
-        source_notes = source_facts.extract_facts(client, source_nm,
-                                                  call_model=model_client.call_model, types=types)
+        try:
+            source_notes = source_facts.extract_facts(client, source_nm,
+                                                      call_model=model_client.call_model, types=types)
+        except ValueError as e:
+            raise ScriptGenerationError(f"Rewrite mode: {e}") from e
         if not source_notes:
             raise ScriptGenerationError("Rewrite mode: no usable facts in the source video.")
         print(f"[Rewrite] {len(source_nm['lines'])} source line(s) -> {len(source_notes)} fact note(s); "
@@ -1662,7 +1665,10 @@ def generate_script_prompt2(topic_spec):
                     + "; ".join(f"scene {i + 1}: {', '.join(ws)}" for i, ws in latin)
                     + ". Write every name and word in Devanagari (e.g. थलासेरी बिरयानी).")
             if latin:
-                print(f"[Prompt 2] accepted with English letters in the narration: {latin}")
+                # The voice reads "याani" as noise. Fail closed: the run moves on
+                # to the next topic rather than publishing it.
+                raise ScriptGenerationError(
+                    f"English letters still in the narration after {STORY_RETRIES} tries: {latin}")
             if nm:
                 drop_filler_labels(data["segments"], nm)
             if nm:
@@ -1703,8 +1709,8 @@ def generate_script_prompt2(topic_spec):
                 if review and script_try < STORY_RETRIES:
                     raise ScriptGenerationError(review)
                 if review:
-                    print(f"[Review] accepted with open notes after {STORY_RETRIES} tries")
-                    data["review_notes"] = review
+                    raise ScriptGenerationError(
+                        f"Viewer review still failing after {STORY_RETRIES} tries: {review}")
                 gone = source_facts.drop_labels(data["segments"], unspoken)
                 if gone:
                     print(f"[Review] removed {gone} label(s) the narration never says: {unspoken}")
