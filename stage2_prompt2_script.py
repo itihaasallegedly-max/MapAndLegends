@@ -32,6 +32,9 @@ load_dotenv()
 # the script is capped so the reel qualifies as a Short/Reel.
 WORDS_PER_S = 2.3            # Flow's Hindi read, measured: 109 words -> 47.7s
 MATCH_BAND = 0.08            # aim within +-8% of their runtime
+REWRITE_MIN_S = float(os.getenv("REWRITE_MIN_S", "40"))
+REWRITE_TARGET_MAX_LO = float(os.getenv("REWRITE_TARGET_MAX_LO", "70"))
+REWRITE_MAX_S = float(os.getenv("REWRITE_MAX_S", "95"))
 SHORT_TOLERANCE = 0.85       # rejected only if under 85% of theirs (items dropped)
 # Hard ceiling for 9:16 uploads: YouTube Shorts = 3 min, Instagram Reels = 3 min
 PLATFORM_CAP_S = int(os.getenv("PLATFORM_CAP_S", "180"))
@@ -213,7 +216,7 @@ def _extract_json(raw):
     # inside a string. Those are syntax slips, not a bad script: repair and
     # re-parse before spending another Gemini call on the same topic.
     try:
-        data = json.loads(_repair_json(text[start:]))
+        data = json.loads(_repair_json(_fix_key_slips(text[start:])))
         print(f"[Prompt 2] repaired malformed JSON ({first.msg} at line {first.lineno} col {first.colno})")
         return data
     except json.JSONDecodeError:
@@ -222,6 +225,16 @@ def _extract_json(raw):
     raise ScriptGenerationError(
         f"Model returned malformed JSON ({first}): {text[start:start + 300]!r}"
     ) from first
+
+
+def _fix_key_slips(s):
+    """Line-start slips seen on 29 Sep: a key missing its opening quote
+    (`per_second": [`), an unquoted key, and a stray markdown bullet before
+    a key (`*   "features": []`)."""
+    s = re.sub(r'(\n[ \t]*)[*\-\u2022][ \t]+(?=")', r"\1", s)
+    s = re.sub(r'(\n[ \t]*)([A-Za-z_][A-Za-z0-9_]*)"[ \t]*:', r'\1"\2":', s)
+    s = re.sub(r'(\n[ \t]*)([A-Za-z_][A-Za-z0-9_]*)[ \t]*:(?=[ \t]*[\[{"\d-])', r'\1"\2":', s)
+    return s
 
 
 def _repair_json(s):
@@ -517,6 +530,25 @@ def _nums(text):
 _LATIN_WORD = re.compile(r"[A-Za-z][A-Za-z'\-]*")
 
 
+_GLUED = re.compile(r"(?<=[\u0900-\u097F])a?ni\b")
+
+
+def fix_glued_latin(segments):
+    """'याani' -> 'यानी': the model's recurring slip of finishing a Hindi word
+    in Latin letters. Only this known fragment, glued to Devanagari, is fixed;
+    anything else is still rejected by latin_in_text()."""
+    fixed = []
+    for i, sg in enumerate(segments):
+        t = str(sg.get("text", ""))
+        new = _GLUED.sub("नी", t)
+        if new != t:
+            sg["text"] = new
+            fixed.append(i + 1)
+    if fixed:
+        print(f"[Prompt 2] fixed Latin letters glued to Hindi in scene(s) {fixed}")
+    return fixed
+
+
 def latin_in_text(segments):
     """[(scene index, [words])] where the spoken line uses English letters."""
     out = []
@@ -778,6 +810,12 @@ def validate_script(data, topic_spec, window=None, faithful=False):
     # Too-short check: a remake that runs well short of the competitor has dropped content.
     if window and not faithful and estimated_audio_s < window[0] * SHORT_TOLERANCE:
         need = int(window[0] * WORDS_PER_S)
+        if NARRATION_MODE == "rewrite":
+            raise ScriptGenerationError(
+                f"Script is too short: estimated audio {estimated_audio_s:.1f}s ({total_words} "
+                f"words); it should run {window[0]:.0f}-{window[1]:.0f}s — write about "
+                f"{int(window[0] * WORDS_PER_S)}+ words by using more of the research notes "
+                f"(one or two more scenes), keeping every linking word and the one-way order.")
         raise ScriptGenerationError(
             f"Script is too short for the competitor video it remakes: estimated audio "
             f"{estimated_audio_s:.1f}s ({total_words} words), theirs needs about "
@@ -1323,6 +1361,15 @@ def generate_script_prompt2(topic_spec):
     competitor_s = float((sm or {}).get("duration_s") or 0) or _probe_seconds(
         topic_spec.get("downloaded_video_path"))
     window = runtime_window(competitor_s)
+    if source_notes and window:
+        # A rewrite tells its own story from the notes, so it is not held to
+        # their runtime: 177s of "every Gujarat temple" becomes a 70-95s video
+        # of the best of them (29 Sep: four topics died on "too short").
+        lo_, hi_ = window
+        lo_ = max(REWRITE_MIN_S, min(lo_, REWRITE_TARGET_MAX_LO))
+        window = (lo_, min(max(hi_, lo_ + 15), REWRITE_MAX_S))
+        print(f"[Rewrite] length is ours: {window[0]:.0f}-{window[1]:.0f}s "
+              f"(theirs {competitor_s:.0f}s)")
     if window:
         lo, hi = window
         w_lo, w_hi = int(lo * WORDS_PER_S), int(hi * WORDS_PER_S)
@@ -1602,14 +1649,20 @@ def generate_script_prompt2(topic_spec):
     # The validator's reasons are precise ("scenes [3, 7] start cold", "the hook
     # promises four parts but never counts them"). Hand them back and retry the
     # SAME topic, instead of spending the next competitor video to learn it.
-    correction = ""
+    correction, history = "", []
     for script_try in range(1, STORY_RETRIES + 1):
+        # Every earlier reason, not only the last one: on 29 Sep each retry
+        # fixed the reason it was given and reintroduced the one before
+        # (cold scenes -> too short -> cold scenes), and five topics died.
+        earlier = "".join(f"\n    - {h}" for h in history[:-1])
         full = prompt + (f"""
 
     YOUR PREVIOUS ATTEMPT WAS REJECTED BY THE VALIDATOR:
     > {correction}
-    Fix exactly that and return the whole JSON again.
-    """ if correction else "")
+    Fix exactly that and return the whole JSON again.""" + (f"""
+    EARLIER ATTEMPTS WERE ALSO REJECTED FOR THESE — the new script must satisfy
+    ALL of them at once, not only the latest:{earlier}
+    """ if earlier else "") if correction else "")
         contents = [video_file_obj, full] if video_file_obj else [full]
 
         try:
@@ -1661,6 +1714,7 @@ def generate_script_prompt2(topic_spec):
                     print(f"[NarrationMap] accepted with {len(dropped)} line(s) not referenced"
                           + (f"; {problem}" if problem else ""))
                 data["narration_map"] = nm
+            fix_glued_latin(data["segments"])
             latin = latin_in_text(data["segments"])
             if latin and script_try < STORY_RETRIES:
                 raise ScriptGenerationError(
@@ -1747,6 +1801,8 @@ def generate_script_prompt2(topic_spec):
             if script_try == STORY_RETRIES:
                 raise
             correction = str(err)
+            if not correction.startswith("Model returned malformed JSON"):
+                history = [h for h in history if h[:40] != correction[:40]] + [correction[:400]]
             print(f"[Prompt 2] attempt {script_try} rejected — retrying with the reason: {correction[:160]}")
     print(
         f"[Prompt 2] Script for '{subject}': {len(data.get('segments', []))} scenes, "
