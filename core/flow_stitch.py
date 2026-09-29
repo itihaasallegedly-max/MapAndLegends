@@ -353,6 +353,9 @@ def keep_window(src, d):
     return a, z - a
 
 
+REEL_LUFS = float(os.getenv("REEL_LUFS", "-14"))
+
+
 def stitch(clips, reel_path, work_dir, size=(W, H)):
     sw, sh = size
     work = Path(work_dir) / f"_stitch_{sw}x{sh}"
@@ -433,7 +436,11 @@ def stitch(clips, reel_path, work_dir, size=(W, H)):
     reel_path = Path(reel_path)
     tmp = reel_path.with_suffix(".partial.mp4")
     _run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mute), "-i", str(nar),
-          "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+          "-map", "0:v", "-map", "1:a", "-c:v", "copy",
+          # Final loudness, after any music bed: YouTube and Instagram play at
+          # about -14 LUFS and turn quiet uploads up by nothing (29 Sep reel: -16.3).
+          "-af", f"loudnorm=I={REEL_LUFS}:TP=-1.5:LRA=11",
+          "-c:a", "aac", "-b:a", "192k",
           "-ar", "44100", "-ac", "2", "-movflags", "+faststart", "-shortest", str(tmp)])
     verify_reel(tmp, total, size)
     tmp.replace(reel_path)       # the reel only appears once it is whole and checked
