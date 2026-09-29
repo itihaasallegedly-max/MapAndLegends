@@ -1398,6 +1398,17 @@ def generate_script_prompt2(topic_spec):
                                           call_model=model_client.call_model, types=types)
         if not source_nm:
             raise ScriptGenerationError("Rewrite mode: could not transcribe the source video.")
+        # Kept beside the downloaded source for auditing the transcription;
+        # never read by the scriptwriter and never published.
+        try:
+            audit = os.path.join(os.path.dirname(topic_spec["downloaded_video_path"]),
+                                 "source_transcript.txt")
+            with open(audit, "w", encoding="utf-8") as f:
+                f.write("\n".join(f"{ln['start']:>5.1f}-{ln['end']:<5.1f} {ln['text']}"
+                                   for ln in source_nm["lines"]) + "\n")
+            print(f"[Rewrite] source transcript saved for checking: {audit}")
+        except Exception as e:  # noqa: BLE001
+            print(f"[Rewrite] could not save the source transcript: {e}")
         try:
             source_notes = source_facts.extract_facts(client, source_nm,
                                                       call_model=model_client.call_model, types=types)
