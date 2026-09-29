@@ -334,3 +334,105 @@ def drop_labels(segments, drop):
             n += len(labs) - len(keep)
             segments[scene - 1]["labels"] = keep
     return n
+
+
+# ---------------------------------------------------------------- storyteller
+# 29 Sep: the scriptwriter was asked for a story AND a 60-field JSON of shots,
+# labels, sounds and per-second beats in one go, and the story lost: thin
+# lists, dropped twists. Now the story is written first, on its own, from the
+# notes; Prompt 2 only splits it into scenes and dresses it with pictures.
+
+STORY_PROMPT = """
+You are a Hindi storyteller for a 60-90 second geography Short/Reel for Indian
+viewers (students and curious adults). Below are research notes: facts only.
+
+Write the NARRATION as a story, in natural spoken Hindi (Devanagari only — no
+English letters; write every name in Devanagari).
+
+1. First decide the ANGLE: the single most surprising idea in these notes (a
+   twist, a contrast, a record, a misconception). Write it in one English
+   sentence in "angle".
+2. Sentence 1 is the HOOK built on that angle. If it asks or promises
+   something, a later sentence must answer it BY NAME.
+3. The story moves one way — through time (earliest to latest), along a route
+   (source to sea), or from the familiar to the surprising. Every sentence
+   picks up from the one before with a true link ("फिर", "लेकिन", "उसी",
+   "अब"...), never "यानी"/"इसीलिए" unless it really follows.
+4. Every sentence carries one concrete detail from the notes: a year, a number,
+   a count, a named place, animal or person. No general praise.
+5. The LAST sentence is the payoff: the takeaway the viewer can repeat.
+6. Use ONLY facts in the notes. Keep each fact's exact scope and relation.
+   If a note is doubtful or vague, leave it out.
+7. LENGTH: {min_words}-{max_words} Hindi words in total, {min_sent}-{max_sent}
+   sentences, each at most 22 words. This is a hard limit: the video must stay
+   under {max_s} seconds.
+8. No greeting, no "like/subscribe" (added separately), no question to the
+   comments.
+9. Your own words and your own order — do not imitate any other channel.
+
+Return JSON only:
+{"angle": "<one English sentence>", "story": ["<Hindi sentence 1>", "..."]}
+
+TOPIC: {subject}
+RESEARCH NOTES:
+{notes}
+"""
+
+
+def write_story(client, notes, subject, window, call_model=None, types=None,
+                words_per_s=2.3, hard_min_s=35, models=("gemini-3.5-flash-lite",)):
+    """(angle, [Hindi sentences]) or raises ValueError. Enforces the word budget:
+    the story can never be long enough to push the reel past window[1] seconds
+    at the slow end of Flow's Hindi pace."""
+    lo, hi = window
+    min_words, max_words = int(lo * words_per_s * 0.9), int(hi * words_per_s)
+    prompt = (STORY_PROMPT.replace("{min_words}", str(min_words))
+              .replace("{max_words}", str(max_words))
+              .replace("{min_sent}", str(max(6, min_words // 20)))
+              .replace("{max_sent}", str(max(8, max_words // 14)))
+              .replace("{max_s}", str(int(hi)))
+              .replace("{subject}", str(subject))
+              .replace("{notes}", "\n".join(f"- {n}" for n in notes)))
+    why = ""
+    for attempt in (1, 2, 3):
+        out = _call(client, call_model, types, prompt + why, "Rewrite: story", models)
+        story = [" ".join(str(s).split()) for s in (out.get("story") or []) if str(s).strip()]
+        words = sum(len(s.split()) for s in story)
+        latin = [s for s in story if re.search(r"[A-Za-z]", s)]
+        problems = []
+        if words > max_words:
+            problems.append(f"it is {words} words; the hard maximum is {max_words} — cut "
+                            f"the weakest sentence(s)")
+        # Too long is never accepted (the platform limit). Too short is only a
+        # target: on the last try anything above hard_min_s of speech is kept.
+        if words < min_words and not (attempt == 3 and words >= hard_min_s * words_per_s):
+            problems.append(f"it is {words} words; write at least {min_words}")
+        if latin:
+            problems.append("some sentences use English letters; write every name in Devanagari")
+        if story and not problems:
+            print(f"[Story] angle: {out.get('angle')}")
+            print(f"[Story] {len(story)} sentences, {words} words (~{words / words_per_s:.0f}s)")
+            return str(out.get("angle") or ""), story
+        print(f"[Story] attempt {attempt} rejected: {'; '.join(problems) or 'empty'}")
+        why = ("\nYOUR LAST STORY WAS REJECTED: " + "; ".join(problems or ["it was empty"])
+               + ". Return the whole JSON again.\n")
+    raise ValueError(f"story still not usable after 3 tries: {'; '.join(problems)}")
+
+
+def story_brief(angle, story, notes):
+    """The Prompt 2 block when the story is already written."""
+    lines = "\n".join(f"    S{i}: {s}" for i, s in enumerate(story, 1))
+    facts = "\n".join(f"    - {n}" for n in notes)
+    return f"""
+    THE NARRATION IS ALREADY WRITTEN. Angle: {angle}
+{lines}
+
+    Your job is to turn it into scenes, NOT to rewrite it:
+    - Each scene's "text" is one or two CONSECUTIVE sentences (S1, S2...) in
+      order, word for word. Do not add sentences or facts; do not drop any.
+    - Only change wording if a validator correction below asks for it.
+    - Pictures and labels follow what each scene's sentences say. Labels are
+      in English letters: the names and numbers those sentences say.
+    - Research notes, for labels and pictures only:
+{facts}
+"""

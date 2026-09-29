@@ -418,6 +418,7 @@ def keep_window(src, d):
 
 
 REEL_LUFS = float(os.getenv("REEL_LUFS", "-14"))
+REEL_MAX_S = float(os.getenv("REEL_MAX_S", "179"))
 
 
 def stitch(clips, reel_path, work_dir, size=(W, H)):
@@ -529,6 +530,11 @@ def verify_reel(path, expected_s, size=(W, H)):
     if (v.get("width"), v.get("height")) != tuple(size):
         raise AssetGenerationError(f"reel is {v.get('width')}x{v.get('height')}, not {size[0]}x{size[1]}")
     got = probe_duration(path)
+    # YouTube Shorts and Instagram Reels both stop at 3 minutes; a vertical reel
+    # at or over it would upload as a normal video / be refused. Never ship one.
+    if size[1] > size[0] and got > REEL_MAX_S:
+        raise AssetGenerationError(
+            f"reel is {got:.1f}s — over the {REEL_MAX_S:.0f}s Shorts/Reels limit; not publishing it")
     if abs(got - expected_s) > 1.5:
         raise AssetGenerationError(f"reel is {got:.1f}s, clips add up to {expected_s:.1f}s")
     log(f"verified {path.name}: {got:.1f}s {size[0]}x{size[1]} with audio")

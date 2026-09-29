@@ -1455,6 +1455,18 @@ def generate_script_prompt2(topic_spec):
         window = (lo_, min(max(hi_, lo_ + 20), REWRITE_MAX_S))
         print(f"[Rewrite] length is ours: {window[0]:.0f}-{window[1]:.0f}s "
               f"(theirs {competitor_s:.0f}s)")
+    story_block = ""
+    if source_notes and os.getenv("REWRITE_STORY", "1") != "0":
+        # The story first, on its own (core/source_facts.write_story), capped so
+        # the reel stays inside window[1] <= REWRITE_MAX_S seconds.
+        try:
+            angle, story = source_facts.write_story(
+                client, source_notes, subject, window or (REWRITE_MIN_S + 15, REWRITE_MAX_S),
+                call_model=model_client.call_model, types=types, words_per_s=WORDS_PER_S,
+                hard_min_s=REWRITE_HARD_MIN_S)
+        except ValueError as e:
+            raise ScriptGenerationError(f"Rewrite mode: {e}") from e
+        story_block = source_facts.story_brief(angle, story, source_notes)
     if window:
         lo, hi = window
         w_lo, w_hi = int(lo * WORDS_PER_S), int(hi * WORDS_PER_S)
@@ -1534,7 +1546,7 @@ def generate_script_prompt2(topic_spec):
     {(HINDI_FAITHFUL_BRIEF if faithful else HINDI_BRIEF) if NARRATION_LANG == "hi" else ""}
     {"" if faithful else STORY_BRIEF}
     {narration_map.brief(nm, NARRATION_LANG)}
-    {source_facts.brief(source_notes)}
+    {story_block or source_facts.brief(source_notes)}
     {sound_map.brief(sm)}
 
     {length_brief}
@@ -1850,6 +1862,8 @@ def generate_script_prompt2(topic_spec):
                     raise ScriptGenerationError(f"Rewrite mode: still too close after {STORY_RETRIES} tries. {why}")
                 print("[Rewrite] originality check passed: facts shared, wording and order our own")
                 data["source_notes"] = source_notes
+                if story_block:
+                    data["story"] = {"angle": angle, "sentences": story}
                 # Would a viewer follow it? Hook, one-way geography, true links,
                 # exact facts, an honest CTA, a payoff, Hindi spellings.
                 # Its style notes (hook, order, link, cta, ending, spelling) get ONE
