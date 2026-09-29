@@ -237,6 +237,8 @@ def build_job(script_data, output_dir, slug, aspect="9:16"):
         clips.append({"prompt": build_prompt(seg, style, index=i, total=n, seconds=secs, music_style=music_style, aspect=aspect),
                       "seconds": secs,
                       "is_cta": seg.get("_cta", False),
+                      # the scene whose line asks to subscribe gets the animation
+                      "subscribe": bool(re.search(r"सब्सक्राइब|subscribe", str(seg.get("text", "")), re.I)),
                       "labels": [str(x).strip() for x in (seg.get("labels") or []) if str(x).strip()][:3],
                       "out": str(flow_dir / f"{i:02d}.mp4")})
     job_path = Path(naming.path(output_dir, slug, "flow_job"))
@@ -351,6 +353,65 @@ def _with_locator(path, base, locator, size):
         return base
 
 
+SUBSCRIBE_CLIP = os.getenv("SUBSCRIBE_CLIP", "brand/subscribe.mp4")
+SUBSCRIBE_MAX_S = float(os.getenv("SUBSCRIBE_MAX_S", "5"))
+SUBSCRIBE_SFX = float(os.getenv("SUBSCRIBE_SFX_VOLUME", "0.6"))
+
+
+def _key_colour(clip):
+    """The animation's background: sampled from the first frame's corner, so a
+    black-screen and a green-screen subscribe clip both work. None = no key."""
+    r = subprocess.run(["ffmpeg", "-v", "error", "-i", str(clip), "-frames:v", "1", "-vf",
+                        "crop=8:8:0:0,scale=1:1", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+                       capture_output=True)
+    if len(r.stdout) < 3:
+        return None
+    rgb = r.stdout[:3]
+    return "0x%02x%02x%02x" % (rgb[0], rgb[1], rgb[2])
+
+
+def _with_subscribe(v, a, keep, work, k, size):
+    """Overlay brand/subscribe.mp4 (a like/subscribe/bell animation on a black
+    or green background) over the END of the clip whose line asks the viewer to
+    subscribe — the spoken line comes last in that scene — and mix its click
+    sound under the narration. No file, or any failure: the clip is unchanged."""
+    clip = Path(SUBSCRIBE_CLIP)
+    if not clip.is_absolute():
+        clip = BASE_DIR / clip
+    if not clip.exists():
+        log(f"subscribe animation: {clip.name} not found in brand/ — skipped")
+        return v, a
+    try:
+        sw, sh = size
+        anim_d = min(probe_duration(clip) or SUBSCRIBE_MAX_S, SUBSCRIBE_MAX_S, keep)
+        st = max(0.0, keep - anim_d)
+        key = _key_colour(clip)
+        keyf = (f",colorkey={key}:0.30:0.12" if key else "")
+        w = int(sw * (0.78 if sh > sw else 0.42))
+        y = f"H*{0.60 if sh > sw else 0.55}"
+        v2, a2 = work / f"v{k:02d}s.mp4", work / f"a{k:02d}s.wav"
+        _run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(v), "-t", f"{anim_d:.3f}", "-i", str(clip),
+              "-filter_complex",
+              f"[1:v]scale={w}:-2{keyf},format=yuva420p,setpts=PTS-STARTPTS+{st:.3f}/TB[s];"
+              f"[0:v][s]overlay=(W-w)/2:{y}:eof_action=pass,format=yuv420p[o]",
+              "-map", "[o]", "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+              "-r", str(FPS), str(v2)])
+        if has_audio(clip):
+            ms = int(st * 1000)
+            _run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(a), "-t", f"{anim_d:.3f}", "-i", str(clip),
+                  "-filter_complex",
+                  f"[1:a]aresample=44100,volume={SUBSCRIBE_SFX},adelay={ms}|{ms}[s];"
+                  f"[0:a][s]amix=inputs=2:duration=first:normalize=0[o]",
+                  "-map", "[o]", "-ac", "2", "-t", f"{keep:.3f}", str(a2)])
+        else:
+            a2 = a
+        log(f"clip {k}: subscribe animation over its last {anim_d:.1f}s (key {key or 'none'})")
+        return v2, a2
+    except Exception as e:  # noqa: BLE001 — never lose a reel over the animation
+        log(f"subscribe animation skipped: {type(e).__name__}: {e}")
+        return v, a
+
+
 def _audio_bed():
     d = BASE_DIR / "brand" / "audio"
     if not d.is_dir():
@@ -434,6 +495,7 @@ def stitch(clips, reel_path, work_dir, size=(W, H)):
         is_cta = src.get('is_cta') if isinstance(src, dict) else False
         labels = src.get('labels') if isinstance(src, dict) else None
         locator = src.get('locator') if isinstance(src, dict) else None
+        wants_sub = bool(src.get('subscribe')) if isinstance(src, dict) else False
         src = Path(src['out']) if isinstance(src, dict) else Path(src)
         clip_overlay = _label_overlay(work / f"ov{k:02d}.png", labels, size, overlay)
         if locator and not is_cta:
@@ -472,6 +534,8 @@ def stitch(clips, reel_path, work_dir, size=(W, H)):
             log(f"{src.name} has no audio track — silence for {d:.1f}s")
             _run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi",
                   "-i", "anullsrc=r=44100:cl=stereo", "-t", f"{keep:.3f}", str(a)])
+        if wants_sub and not is_cta:
+            v, a = _with_subscribe(v, a, keep, work, k, size)
         vids.append(v)
         auds.append(a)
         cut = f" -> kept {ss:.2f}-{ss + keep:.2f}s ({keep:.1f}s)" if keep < d - 0.05 else ""
