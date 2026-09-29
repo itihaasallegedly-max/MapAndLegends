@@ -370,6 +370,18 @@ def _key_colour(clip):
     return "0x%02x%02x%02x" % (rgb[0], rgb[1], rgb[2])
 
 
+def _dims(clip):
+    """(width, height) of the first video stream, or (0, 0)."""
+    try:
+        r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                            "stream=width,height", "-of", "csv=p=0", str(clip)],
+                           capture_output=True, text=True)
+        w, h = r.stdout.strip().split(",")[:2]
+        return int(w), int(h)
+    except Exception:  # noqa: BLE001
+        return 0, 0
+
+
 def _with_subscribe(v, a, keep, work, k, size):
     """Overlay brand/subscribe.mp4 (a like/subscribe/bell animation on a black
     or green background) over the END of the clip whose line asks the viewer to
@@ -387,12 +399,18 @@ def _with_subscribe(v, a, keep, work, k, size):
         st = max(0.0, keep - anim_d)
         key = _key_colour(clip)
         keyf = (f",colorkey={key}:0.30:0.12" if key else "")
-        w = int(sw * (0.78 if sh > sw else 0.42))
-        y = f"H*{0.60 if sh > sw else 0.55}"
+        # A full-frame 9:16 animation (button in the middle of a black frame)
+        # is cropped to its middle band first; otherwise scaling the whole frame
+        # and placing its TOP at 60% pushed the button off the bottom edge.
+        cw, ch = _dims(clip)
+        full_frame = bool(cw and ch and ch > cw * 1.3)
+        cropf = "crop=iw:ih*0.22:0:(ih-ih*0.22)/2," if full_frame else ""
+        w = int(sw * ((0.95 if full_frame else 0.78) if sh > sw else 0.42))
+        y = f"H*{0.60 if sh > sw else 0.55}-h/2"
         v2, a2 = work / f"v{k:02d}s.mp4", work / f"a{k:02d}s.wav"
         _run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(v), "-t", f"{anim_d:.3f}", "-i", str(clip),
               "-filter_complex",
-              f"[1:v]scale={w}:-2{keyf},format=yuva420p,setpts=PTS-STARTPTS+{st:.3f}/TB[s];"
+              f"[1:v]{cropf}scale={w}:-2{keyf},format=yuva420p,setpts=PTS-STARTPTS+{st:.3f}/TB[s];"
               f"[0:v][s]overlay=(W-w)/2:{y}:eof_action=pass,format=yuv420p[o]",
               "-map", "[o]", "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
               "-r", str(FPS), str(v2)])
