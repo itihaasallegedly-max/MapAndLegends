@@ -15,6 +15,7 @@ from google import genai
 from google.genai import types
 
 from core import model_client, sound_map, narration_map, source_facts
+from stage2_prompt3_factcheck import fact_check_script, correction as fact_correction
 from pipeline_errors import ConfigError, QuotaExhaustedError, ScriptGenerationError
 from utils.frame_extractor import extract_frames_base64
 
@@ -134,7 +135,9 @@ HINDI_FAITHFUL_BRIEF = HINDI_BRIEF.replace(
 
 FLOW_HINDI_WPS = float(os.getenv("FLOW_HINDI_WPS", "2.75"))   # measured 29 Sep: 294 words -> 106.8s
 
-STORY_RETRIES = int(os.getenv("PROMPT2_STORY_RETRIES", "3"))
+# 4, not 3 (29 Sep): originality, viewer review and the fact-check now share
+# these tries, and the last one fails closed.
+STORY_RETRIES = int(os.getenv("PROMPT2_STORY_RETRIES", "4"))
 STORY_BRIEF = """
     THE NARRATION IS ONE STORY, NOT A LIST OF FACTS.
     Each scene's line is voiced separately, clip by clip, so the only thing that
@@ -1714,6 +1717,16 @@ def generate_script_prompt2(topic_spec):
                 gone = source_facts.drop_labels(data["segments"], unspoken)
                 if gone:
                     print(f"[Review] removed {gone} label(s) the narration never says: {unspoken}")
+            if os.getenv("FACTCHECK", "1") != "0":
+                # What the viewer hears, checked scene by scene. A false claim is
+                # sent back with the correct version; still false after the last
+                # try, the script is rejected. Cannot run -> FactCheckError.
+                gate = fact_check_script(client, data["segments"], model_client.call_model, types)
+                data["factcheck"] = gate
+                if not gate["safe_to_publish"]:
+                    raise ScriptGenerationError(
+                        fact_correction(gate) if script_try < STORY_RETRIES else
+                        f"Fact-check still failing after {STORY_RETRIES} tries: {gate['reason']}")
             miss = sound_map.missing(data["segments"], sm)
             if miss and script_try < STORY_RETRIES:
                 raise ScriptGenerationError(sound_map.missing_reason(miss))

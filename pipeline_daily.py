@@ -158,6 +158,15 @@ def _build_topic_spec(force_topic):
     return spec
 
 
+def _burn_failed_competitor(topic_spec, force_topic):
+    """A competitor video whose rewrite failed is marked used, so the next
+    attempt draws the next Short instead of the same one five times (the draw
+    always takes the freshest unseen URL). Backlog topics are left unspent."""
+    if topic_spec and topic_spec.get("url") and not force_topic:
+        record_topic_used(topic_spec)
+        print(f"[draw] {topic_spec['topic']}: failed, marked used so the next attempt draws another")
+
+
 def run_script_generation(force_topic=None, max_attempts=5):
     """
     Runs the topic drawing, script generation, and fact-checking phase.
@@ -218,6 +227,10 @@ def run_script_generation(force_topic=None, max_attempts=5):
             with open(naming.path(output_dir, topic_slug, "script"), "w",
                       encoding="utf-8") as f:
                 json.dump(script_data, f, indent=2, ensure_ascii=False)
+            if script_data.get("factcheck"):
+                with open(naming.path(output_dir, topic_slug, "factcheck"), "w",
+                          encoding="utf-8") as f:
+                    json.dump(script_data["factcheck"], f, indent=2, ensure_ascii=False)
 
 
 
@@ -258,6 +271,7 @@ def run_script_generation(force_topic=None, max_attempts=5):
             raise
         except ScriptGenerationError as e:
             label = topic_spec["topic"] if topic_spec else "(no topic drawn)"
+            _burn_failed_competitor(topic_spec, force_topic)
             print(f"\n!! {type(e).__name__} on '{label}':\n{e}")
             attempts.append({"topic": label, "outcome": "error",
                              "error": f"{type(e).__name__}: {e}"})
@@ -272,6 +286,7 @@ def run_script_generation(force_topic=None, max_attempts=5):
             return None
         except PipelineError as e:
             print(f"\n!! {type(e).__name__}: {e}")
+            _burn_failed_competitor(topic_spec, force_topic)
             attempts.append({"topic": topic_spec["topic"] if topic_spec else None,
                              "outcome": "error", "error": str(e)})
             continue
