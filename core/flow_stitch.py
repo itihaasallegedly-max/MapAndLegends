@@ -178,6 +178,15 @@ def build_prompt(seg, style="", index=1, total=1, seconds=None, music_style=None
         parts.append("FLAGS: every flag is the exact, real national flag of the country it "
                      "stands for — correct colours, stripe order and emblem; no invented or "
                      "blended flags; at most three flags on screen at once, large and clear.")
+    # 29 Sep: the French Guiana reel showed India's State Emblem with a garbled
+    # motto, rupee notes and a passport while the line was about France.
+    parts.append("SYMBOLS: never draw a national emblem, state seal, coat of arms, crest, "
+                 "official stamp, passport, ID card, certificate, banknote or coin. Show only "
+                 "places, maps, landscapes, people and objects that belong to the place this "
+                 "line is about; never symbols of any other country (no Indian symbols unless "
+                 "the line is about India).")
+    if seg.get("_avoid"):
+        parts.append(str(seg["_avoid"]))
     neg_prompt = NEG.format(orient="horizontal" if wide else "vertical")
     if seg.get("_cta"):
         neg_prompt = neg_prompt.replace(", no on-screen text, no captions, no subtitles, no watermark, no logos", "")
@@ -240,6 +249,7 @@ def build_job(script_data, output_dir, slug, aspect="9:16"):
                       # the scene whose line asks to subscribe gets the animation
                       "subscribe": bool(re.search(r"सब्सक्राइब|subscribe", str(seg.get("text", "")), re.I)),
                       "labels": [str(x).strip() for x in (seg.get("labels") or []) if str(x).strip()][:3],
+                      "line": spoken_line(seg),
                       "out": str(flow_dir / f"{i:02d}.mp4")})
     job_path = Path(naming.path(output_dir, slug, "flow_job"))
     if aspect == "16:9":
@@ -647,6 +657,8 @@ def render_reel(script_data, output_dir, slug, aspect="9:16"):
                 f"the {len(clips) - len(still)} on disk are kept for --resume")
     if os.getenv("VOICE_DRIFT_FIX", "1") != "0":
         _fix_voice_drift(clips, job_path, aspect)
+    if os.getenv("VISUAL_CHECK", "1") != "0":
+        _check_visuals(clips, job_path, script_data)
     if os.getenv("LOCATOR_MAP", "1") != "0":
         _attach_locator(clips, script_data, output_dir, slug, aspect)
     reel = reel_path_for(output_dir, slug, aspect)
@@ -704,6 +716,81 @@ def _fix_voice_drift(clips, job_path, aspect):
             log(f"clip {i + 1}: new take {new or 0:.0f} Hz is no closer — keeping the first take")
         else:
             log(f"clip {i + 1}: new take {new:.0f} Hz (was {pitch[i]:.0f}) — using it")
+
+
+VISUAL_MAX_REGEN = int(os.getenv("VISUAL_MAX_REGEN", "4"))
+
+
+def _check_visuals(clips, job_path, script_data):
+    """Stop emblems, documents, money, wrong-country symbols, stray writing and
+    pictures that contradict the line from reaching an upload.
+
+    Each raw Flow clip is shown to a vision model with its line. A failing clip
+    is regenerated once with the problem named in its prompt (first take kept as
+    <nn>.visual1.mp4). If the new take still fails, or the check cannot run,
+    the render stops: the clips stay on disk for --resume, nothing is published.
+    """
+    from core import visual_check
+    try:
+        from google import genai
+        from google.genai import types
+        from core import model_client
+    except Exception as e:  # noqa: BLE001
+        raise AssetGenerationError(f"visual check cannot run: {e}")
+    key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not key:
+        raise AssetGenerationError("visual check needs GEMINI_API_KEY")
+    client = genai.Client(api_key=key)
+    topic = str(script_data.get("title") or script_data.get("topic") or "")
+
+    def check(i):
+        c = clips[i]
+        try:
+            probs = visual_check.check_clip(client, c["out"], c.get("line", ""), topic,
+                                            model_client.call_model, types)
+            # the subscribe/CTA clip is allowed its own writing
+            return [p for p in probs if not (c.get("is_cta") and p["kind"] == "text")]
+        except Exception as e:  # noqa: BLE001
+            raise AssetGenerationError(f"visual check failed on clip {i + 1}: {type(e).__name__}: {e}")
+
+    bad = {}
+    for i, c in enumerate(clips):
+        probs = check(i)
+        if probs:
+            bad[i] = probs
+            log(f"clip {i + 1}: " + "; ".join(f"{p['kind']}: {p['what']}" for p in probs))
+    log(f"visual check: {len(clips) - len(bad)}/{len(clips)} clip(s) clean")
+    if not bad:
+        return
+    if len(bad) > VISUAL_MAX_REGEN:
+        raise AssetGenerationError(f"visual check: {len(bad)} clips show emblems/wrong symbols/"
+                                   f"text (limit {VISUAL_MAX_REGEN} regenerations) — not publishing")
+    job = json.loads(Path(job_path).read_text(encoding="utf-8"))
+    todo = []
+    for i, probs in bad.items():
+        out = Path(clips[i]["out"])
+        first = out.with_suffix(".visual1.mp4")
+        if first.exists():
+            raise AssetGenerationError(f"visual check: clip {i + 1} failed again after one "
+                                       f"regeneration — not publishing")
+        out.rename(first)
+        extra = " " + visual_check.avoid_line(probs)
+        job["clips"][i]["prompt"] = job["clips"][i]["prompt"] + extra
+        clips[i]["prompt"] = job["clips"][i]["prompt"]
+        todo.append(i)
+        log(f"clip {i + 1}: regenerating once")
+    Path(job_path).write_text(json.dumps(job, ensure_ascii=False, indent=1), encoding="utf-8")
+    run_flow(job_path)
+    for i in todo:
+        if not Path(clips[i]["out"]).exists():
+            raise AssetGenerationError(f"visual check: clip {i + 1} regeneration did not arrive "
+                                       f"— not publishing (rerun with --resume)")
+        probs = check(i)
+        if probs:
+            raise AssetGenerationError(f"visual check: clip {i + 1} still shows "
+                                       + "; ".join(f"{p['kind']}: {p['what']}" for p in probs)
+                                       + " — not publishing")
+        log(f"clip {i + 1}: new take is clean")
 
 
 def _attach_locator(clips, script_data, output_dir, slug, aspect):
