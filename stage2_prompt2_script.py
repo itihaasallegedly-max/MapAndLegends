@@ -308,14 +308,87 @@ def _dump_raw(raw, err):
 # most one step (usually +2s) on that one scene. The model is asked for it in
 # the prompt too, but a faithful translation leaves no room for it, so it is
 # placed here when the model did not.
-MIDROLL_CTA_HI = [
-    "ऐसी और कहानियों के लिए मैप एंड लेजेंड को सब्सक्राइब कर लीजिए।",
-    "नक्शा अभी बाकी है, सब्सक्राइब करके साथ चलते रहिए।",
-    "ये सफ़र अच्छा लग रहा है, तो चैनल सब्सक्राइब कर लीजिए।",
-    "आगे बढ़ने से पहले, मैप एंड लेजेंड को सब्सक्राइब कर लीजिए।",
-    "हर दिन एक नया नक्शा चाहिए, तो अभी सब्सक्राइब कीजिए।",
-]
+CTA_HISTORY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs", "cta_history.txt")
+
+
+def _recent_ctas(n=15):
+    try:
+        with open(CTA_HISTORY, encoding="utf-8") as f:
+            return [l.strip() for l in f if l.strip()][-n:]
+    except OSError:
+        return []
+
+
+def _recent_cta_note():
+    recent = _recent_ctas()
+    if not recent:
+        return ""
+    return (" Recent videos already used these — do not repeat or closely echo any of them: "
+            + " | ".join(recent))
+
+
+def _valid_cta(line, recent):
+    line = " ".join(str(line or "").split())
+    if not line or not re.search(r"[\u0900-\u097F]", line):
+        return None, "not Hindi"
+    if not _CTA_WORDS.search(line):
+        return None, "does not ask to subscribe"
+    if len(line.split()) > 12:
+        return None, f"{len(line.split())} words, max 10"
+    norm = lambda x: re.sub(r"[^\w\u0900-\u097F]", "", x)
+    if any(norm(line) == norm(r) for r in recent):
+        return None, "same as a recent video's line"
+    if not re.search(r"[।.!?]$", line):
+        line += "।"
+    return line, None
 _CTA_WORDS = re.compile(r"सब्सक्राइब|subscribe|Subscribe", re.I)
+
+
+def write_midroll_cta(client, types, data, tries=3):
+    """One short, fresh Hindi subscribe line for this script, from the model."""
+    recent = _recent_ctas(50)
+    segs = data.get("segments") or []
+    story = "\n".join(f"{i + 1}. {sg.get('text', '')}" for i, sg in enumerate(segs))
+    why = ""
+    for _ in range(tries):
+        prompt = (
+            "This is the Hindi narration of a short geography video for the channel "
+            "मैप एंड लेजेंड, scene by scene:\n" + story + "\n\n"
+            "Write ONE line the narrator says around the middle, asking viewers to subscribe. "
+            "Everyday spoken Hindi in Devanagari, at most 10 words, must contain the word "
+            "सब्सक्राइब. Make it belong to THIS story: pick up from what was just revealed "
+            "and lean into what comes next, so it sounds like part of the narration, not an ad. "
+            "No stock phrases."
+            + (" Do not repeat or echo any of these recent lines: " + " | ".join(recent[-15:]) if recent else "")
+            + (f" Your last answer was rejected: {why}." if why else "")
+            + ' Return JSON only: {"midroll_cta": "<line>", "midroll_after": <scene number it follows>}')
+        try:
+            resp, _ = model_client.call_model(
+                lambda m: client.models.generate_content(
+                    model=m, contents=[prompt],
+                    config=types.GenerateContentConfig(response_mime_type="application/json")),
+                models=["gemini-3.5-flash-lite"], what="mid-roll CTA line")
+            out = _extract_json(resp.text)
+        except QuotaExhaustedError:
+            raise
+        except Exception as e:  # noqa: BLE001 — optional line, never costs the reel
+            print(f"[CTA] line request failed: {type(e).__name__}: {e}")
+            return None
+        line, why = _valid_cta(out.get("midroll_cta"), recent)
+        if line:
+            if out.get("midroll_after"):
+                data["midroll_after"] = out["midroll_after"]
+            return line
+    return None
+
+
+def _remember_cta(line):
+    try:
+        os.makedirs(os.path.dirname(CTA_HISTORY), exist_ok=True)
+        with open(CTA_HISTORY, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except OSError:
+        pass
 
 
 def insert_midroll_cta(data):
@@ -335,14 +408,31 @@ def insert_midroll_cta(data):
         if _CTA_WORDS.search(str(sg.get("text", ""))):
             print(f"[CTA] mid-roll already in scene {i + 1}")
             return i
-    import hashlib
-    key = str(data.get("title") or data.get("upload_title") or "")
-    line = MIDROLL_CTA_HI[int(hashlib.md5(key.encode()).hexdigest(), 16) % len(MIDROLL_CTA_HI)]
+    line, why = _valid_cta(data.get("midroll_cta"), _recent_ctas(50))
+    if not line:
+        print(f"[CTA] model's mid-roll line unusable ({why}) — none this time")
+        return None
     n_cta = len(line.split())
+    try:
+        want = int(data.get("midroll_after") or 0) - 1      # the model's own pick, 0-based
+    except (TypeError, ValueError):
+        want = -1
+    # The line was written to follow the model's chosen scene, so it goes
+    # there whenever that scene is anywhere reasonable (20-85% in).
+    band = (0.35, 0.7)
+    if 0 < want < len(segs) - 1:
+        w_end = starts[want] + float(segs[want].get("seconds") or 0)
+        w_txt = str(segs[want].get("text", "")).rstrip()
+        if 0.2 * total <= w_end <= 0.85 * total and not w_txt.endswith(("...", "…", "?")):
+            band = (0.0, 1.0)
+        else:
+            want = -1
     best = None
     for i, sg in enumerate(segs):
         end = starts[i] + float(sg.get("seconds") or 0)
-        if i in (0, len(segs) - 1) or sg.get("_cta") or not (0.35 * total <= end <= 0.7 * total):
+        if want >= 0 and i != want:
+            continue
+        if i in (0, len(segs) - 1) or sg.get("_cta") or not (band[0] * total <= end <= band[1] * total):
             continue
         text = str(sg.get("text", "")).rstrip()
         if text.endswith(("...", "…")) or text.endswith("?"):
@@ -353,14 +443,17 @@ def insert_midroll_cta(data):
         if need is None:
             continue
         added = need - sec
-        score = (added, abs(end - 0.5 * total))   # no extra seconds first, then nearest the middle
+        # the model's chosen scene first (it wrote the line to follow it),
+        # then no extra seconds, then nearest the middle
+        score = (i != want, added, abs(end - 0.5 * total))
         if best is None or score < best[0]:
             best = (score, i, need)
     if best is None:
         # Every mid scene is full: give the line its own short scene that
         # CONTINUES the previous shot (same picture, camera keeps drifting),
         # so it plays as a breath in the story, not a cut to an ad.
-        mids = [i for i in range(1, len(segs) - 1)
+        mids = [want] if want >= 0 else [
+                i for i in range(1, len(segs) - 1)
                 if 0.35 * total <= starts[i] + float(segs[i].get("seconds") or 0) <= 0.7 * total
                 and not str(segs[i].get("text", "")).rstrip().endswith(("...", "…", "?"))]
         if not mids:
@@ -385,10 +478,11 @@ def insert_midroll_cta(data):
         }
         segs.insert(i + 1, new_seg)
         data["segments"] = segs
+        _remember_cta(line)
         print(f"[CTA] mid-roll as its own {L}s scene after scene {i + 1} "
               f"(at ~{starts[i] + float(prev.get('seconds') or 0):.0f}s of {total + L:.0f}s): {line}")
         return i + 1
-    (added, _), i, need = best
+    (_, added, _), i, need = best
     if total + added > PLATFORM_CAP_S:
         print("[CTA] skipped: would pass the platform limit")
         return None
@@ -398,6 +492,7 @@ def insert_midroll_cta(data):
         sg["seconds"] = float(need)
         if sg.get("per_second"):
             sg["per_second"] = _resize_beats(sg["per_second"], int(need))
+    _remember_cta(line)
     print(f"[CTA] mid-roll added to scene {i + 1} of {len(segs)} "
           f"(+{added:.0f}s, at ~{starts[i]:.0f}s of {total + added:.0f}s): {line}")
     return i
@@ -1304,6 +1399,8 @@ def generate_script_prompt2(topic_spec):
           "figure": "<what the illustration should show: a person, animal or object, in a few words>",
           "seconds": 8}}
       ],
+      "midroll_cta": "<one fresh Hindi subscribe line for THIS video, max 10 words>",
+      "midroll_after": 6,
       "caption": "<ONE evocative line, then exactly 3 specific hashtags>",
       "upload_title": "<an SEO-friendly video title optimized for YouTube/Instagram, max 60 characters>",
       "upload_hashtags": ["<seo-friendly tag 1>", "<seo-friendly tag 2>", "<seo-friendly tag 3>", "<seo-friendly tag 4>", "<seo-friendly tag 5>"],
@@ -1323,7 +1420,7 @@ def generate_script_prompt2(topic_spec):
       scene's "labels". A script that loses one of their numbers is rejected.
     - {words_rule} Short, punchy sentences — about 12 words for a 6-second scene, 16 for 8 seconds, 20 for 10. The clip is cut to the line's length, so a line much shorter than its scene leaves dead air.
     - Write about the topic presented in the video.
-    - Do NOT write any like/comment/subscribe line anywhere: one short mid-roll subscribe line is woven into a mid-reel scene automatically after you answer.
+    - MID-ROLL SUBSCRIBE LINE: write ONE fresh line in "midroll_cta" — everyday spoken Hindi, at most 10 words, asking the viewer to subscribe to मैप एंड लेजेंड (or "चैनल"), written for THIS video: it picks up from what the scene before it just revealed and leans into what comes next, so it sounds like part of the story, not an ad. Never generic, never a stock phrase. Put the scene number it follows (a scene around the middle that ends on a full stop, not a question or a joke setup) in "midroll_after". Do not put any like/comment/subscribe words in the scenes' "text" yourself.{_recent_cta_note()}
     - Every scene's "seconds" must be exactly 4, 6, 8 or 10. No other value —
       not 5, not 12, not 15. These are the lengths a text-to-video model
       actually generates, so a scene is one generation and never a join.
@@ -1521,6 +1618,12 @@ def generate_script_prompt2(topic_spec):
                 print(f"[SoundMap] model still dropped {placed} — placed by time")
             if sm:
                 data["sound_map"] = sm
+            if os.getenv("MIDROLL_CTA", "1") != "0" and NARRATION_LANG == "hi":
+                ok, why = _valid_cta(data.get("midroll_cta"), _recent_ctas(50))
+                if not ok:
+                    # A good script is not thrown away for one line: ask for the line alone.
+                    print(f"[CTA] script's midroll_cta unusable ({why}) — asking for the line alone")
+                    data["midroll_cta"] = write_midroll_cta(client, types, data)
             insert_midroll_cta(data)
             break
         except ScriptGenerationError as err:
