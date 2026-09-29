@@ -507,6 +507,39 @@ def _nums(text):
     return {n.replace(",", "") for n in _NUM_RE.findall(str(text).translate(_DEVA_DIGITS))}
 
 
+_LATIN_WORD = re.compile(r"[A-Za-z][A-Za-z'\-]*")
+
+
+def latin_in_text(segments):
+    """[(scene index, [words])] where the spoken line uses English letters."""
+    out = []
+    for i, sg in enumerate(segments):
+        ws = _LATIN_WORD.findall(str(sg.get("text", "")))
+        if ws:
+            out.append((i, ws[:6]))
+    return out
+
+
+_FILLER_LABEL = re.compile(r"^\s*(\d+)\s+(dishes|items|places|foods|things|facts|rivers|cities|spots|sites|states|districts)\s*$", re.I)
+
+
+def drop_filler_labels(segments, nm):
+    """Remove '4 Dishes'-style counts the narrator never says."""
+    said = set()
+    for ln in nm.get("lines") or []:
+        said |= _nums(ln.get("text", ""))
+    for sg in segments:
+        kept = []
+        for lb in sg.get("labels") or []:
+            m = _FILLER_LABEL.match(str(lb))
+            if m and m.group(1) not in said:
+                print(f"[Labels] dropped filler label {lb!r}")
+                continue
+            kept.append(lb)
+        if "labels" in sg:
+            sg["labels"] = kept
+
+
 def missing_numbers(segments, nm):
     """[(line id, [numbers])] for competitor numbers no scene carries as digits.
     Checked against labels + text of all scenes, not just the referencing one:
@@ -1415,6 +1448,13 @@ def generate_script_prompt2(topic_spec):
       signs or map text — show places with pins, glowing river lines, colour
       fills, icons and camera moves only. Names and numbers go in "labels";
       we put those on screen ourselves, spelled correctly.
+    - SPOKEN TEXT IS DEVANAGARI ONLY: every name, dish and English word in
+      "text" is written in Hindi letters (थलासेरी बिरयानी, फिश मोली, स्टू),
+      never in English letters — the voice reads English letters with an
+      English accent. English letters belong only in "labels".
+    - LABELS are a place, a dish, a landmark, or a number the narrator
+      actually says. No filler counts ("4 Dishes", "3 Places") unless the
+      narrator says that number.
     - NUMBERS: every number the competitor says (distances, years, discharge,
       counts, percentages) is kept — in the spoken line AND as digits in that
       scene's "labels". A script that loses one of their numbers is rejected.
@@ -1591,6 +1631,16 @@ def generate_script_prompt2(topic_spec):
                     print(f"[NarrationMap] accepted with {len(dropped)} line(s) not referenced"
                           + (f"; {problem}" if problem else ""))
                 data["narration_map"] = nm
+            latin = latin_in_text(data["segments"])
+            if latin and script_try < STORY_RETRIES:
+                raise ScriptGenerationError(
+                    "English letters in the spoken text: "
+                    + "; ".join(f"scene {i + 1}: {', '.join(ws)}" for i, ws in latin)
+                    + ". Write every name and word in Devanagari (e.g. थलासेरी बिरयानी).")
+            if latin:
+                print(f"[Prompt 2] accepted with English letters in the narration: {latin}")
+            if nm:
+                drop_filler_labels(data["segments"], nm)
             if nm:
                 lost = missing_numbers(data["segments"], nm)
                 if lost and script_try < STORY_RETRIES:
