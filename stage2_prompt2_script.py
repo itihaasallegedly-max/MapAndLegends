@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-from core import model_client, sound_map, narration_map
+from core import model_client, sound_map, narration_map, source_facts
 from pipeline_errors import ConfigError, QuotaExhaustedError, ScriptGenerationError
 from utils.frame_extractor import extract_frames_base64
 
@@ -101,6 +101,10 @@ HINDI_BRIEF = """
 # same lines, same order, nothing added or dropped. Our own story rules (hook,
 # linking words, payoff) do not apply then: their script is the script.
 # NARRATION_MODE=free (default since 29 Sep 2026): the model writes its own story.
+# NARRATION_MODE=rewrite (29 Sep 2026): their video is transcribed, boiled down
+# to bare fact notes (core/source_facts.py), and the script is written fresh
+# from those notes WITHOUT seeing their video; an originality pass then checks
+# it against their transcript. Their facts, our words, order and visuals.
 NARRATION_MODE = os.getenv("NARRATION_MODE", "free").strip().lower()
 MAX_DROPPED_LINES = 0.10     # on the last try, accept at most 10% of their lines missing
 
@@ -1273,6 +1277,22 @@ def generate_script_prompt2(topic_spec):
             raise ScriptGenerationError(f"Gemini failed to process the video: {video_path}")
         print("[Prompt 2] Video processing complete!")
 
+    source_nm, source_notes = None, None
+    if NARRATION_MODE == "rewrite" and video_file_obj is not None:
+        source_nm = narration_map.extract(client, video_file_obj,
+                                          call_model=model_client.call_model, types=types)
+        if not source_nm:
+            raise ScriptGenerationError("Rewrite mode: could not transcribe the source video.")
+        source_notes = source_facts.extract_facts(client, source_nm,
+                                                  call_model=model_client.call_model, types=types)
+        if not source_notes:
+            raise ScriptGenerationError("Rewrite mode: no usable facts in the source video.")
+        print(f"[Rewrite] {len(source_nm['lines'])} source line(s) -> {len(source_notes)} fact note(s); "
+              f"the scriptwriter will not see their video")
+        for n in source_notes:
+            print(f"[Rewrite]   {n}")
+        video_file_obj = None   # no sound map, no frame copying, no transcript in the prompt
+
     # Their sound design, heard on its own before the script is written: a
     # single pass over script + visuals + sound hears the words and loses the
     # firecracker under them.
@@ -1313,6 +1333,9 @@ def generate_script_prompt2(topic_spec):
                         f"about {lo:.0f}-{hi:.0f} seconds spoken. Cover EVERYTHING they cover: every "
                         f"member, place and beat, in their order. Never drop an item to save time."
                         + cap_note)
+        if source_notes:
+            length_brief = (f"LENGTH: about {lo:.0f}-{hi:.0f} seconds spoken. Cover the research "
+                            f"notes that make the best story, in the order YOU choose." + cap_note)
         words_rule = (f"WORD COUNT: the TOTAL words across all 'text' fields combined should be about "
                       f"{w_lo}-{w_hi} (that is {lo:.0f}-{hi:.0f} seconds spoken). "
                       f"Under {int(lo * SHORT_TOLERANCE * WORDS_PER_S)} "
@@ -1373,6 +1396,7 @@ def generate_script_prompt2(topic_spec):
     {(HINDI_FAITHFUL_BRIEF if faithful else HINDI_BRIEF) if NARRATION_LANG == "hi" else ""}
     {"" if faithful else STORY_BRIEF}
     {narration_map.brief(nm, NARRATION_LANG)}
+    {source_facts.brief(source_notes)}
     {sound_map.brief(sm)}
 
     {length_brief}
@@ -1438,7 +1462,7 @@ def generate_script_prompt2(topic_spec):
       "upload_title": "<an SEO-friendly video title optimized for YouTube/Instagram, max 60 characters>",
       "upload_hashtags": ["<seo-friendly tag 1>", "<seo-friendly tag 2>", "<seo-friendly tag 3>", "<seo-friendly tag 4>", "<seo-friendly tag 5>"],
       "facts": ["<every discrete factual claim made, one per string>"],
-      "original_content_link": "{topic_spec.get('url', '')}"
+      "original_content_link": "{'' if source_notes else topic_spec.get('url', '')}"
     }}
 
     Rules:
@@ -1660,6 +1684,18 @@ def generate_script_prompt2(topic_spec):
                         f"say each one in fewer, everyday spoken words — cut filler, not facts.")
                 if total > budget * 1.12:
                     print(f"[Prompt 2] accepted over budget: {total} words vs {budget}")
+            if source_nm:
+                why = source_facts.check_originality(client, source_nm, data["segments"],
+                                                     call_model=model_client.call_model, types=types)
+                if why == "__unchecked__":
+                    raise ScriptGenerationError(
+                        "Rewrite mode: the originality check could not run, so the script is not published.")
+                if why and script_try < STORY_RETRIES:
+                    raise ScriptGenerationError(why)
+                if why:
+                    raise ScriptGenerationError(f"Rewrite mode: still too close after {STORY_RETRIES} tries. {why}")
+                print("[Rewrite] originality check passed: facts shared, wording and order our own")
+                data["source_notes"] = source_notes
             miss = sound_map.missing(data["segments"], sm)
             if miss and script_try < STORY_RETRIES:
                 raise ScriptGenerationError(sound_map.missing_reason(miss))
