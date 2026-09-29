@@ -112,6 +112,7 @@ def _fetch_youtube(ids):
     token = _youtube_access_token()
     key = os.getenv("YOUTUBE_API_KEY", "").strip()
     if not token and not key:
+        print("[Performance] no YouTube credentials for stats — skipping YouTube")
         return {}
 
     for start in range(0, len(ids), 50):
@@ -130,18 +131,32 @@ def _fetch_youtube(ids):
                 if views is not None:
                     out[item["id"]] = int(views)
         except Exception as e:  # noqa: BLE001 — a stats read must never break Stage 1
-            print(f"[Performance] YouTube stats unavailable: {type(e).__name__}: {e}")
+            body = getattr(getattr(e, "response", None), "text", "")[:300]
+            hint = (" — the saved login lacks read access; re-authorise with "
+                    "authorise_youtube()" if "insufficient" in body.lower() or "403" in str(e) else "")
+            print(f"[Performance] YouTube stats unavailable: {type(e).__name__}: {e} {body}{hint}")
             break
     return out
 
 
 def _youtube_access_token():
-    """A live access token from the upload credentials, or None.
+    """A live access token from the SAME credentials the uploads use
+    (core.uploader.youtube_credentials: YT_REFRESH_TOKEN in .env first, then
+    the token file). Before 29 Sep this looked only for the token file, found
+    none, and skipped YouTube without a word.
+
+    Old docstring follows.
+    A live access token from the upload credentials, or None.
 
     Reading view counts needs the youtube.readonly scope. A token authorised
     before that scope was added will not carry it — re-run authorise_youtube()
     once and both scopes come back together.
     """
+    try:
+        from core.uploader import youtube_credentials
+        return youtube_credentials().token
+    except Exception as e:  # noqa: BLE001
+        print(f"[Performance] YouTube login for stats failed: {type(e).__name__}: {str(e)[:200]}")
     token_file = os.getenv("YOUTUBE_TOKEN_FILE", "youtube_token.json")
     if not os.path.isabs(token_file):
         token_file = os.path.join(BASE_DIR, token_file)
@@ -162,31 +177,51 @@ def _youtube_access_token():
 
 
 def _fetch_instagram(ids):
-    """{media_id: plays} from the Graph API — free with the publishing token."""
+    """{media_id: views} from the Graph API — free with the publishing token.
+
+    Instagram-Login tokens (IGAA...) only work on graph.instagram.com (the
+    uploader already knows this: core.uploader.graph_root). "plays" was
+    replaced by "views" for Reels in 2025; "plays" is tried second for older
+    API versions. Failures are printed, not swallowed (29 Sep: 0 of 14 read,
+    no message).
+    """
     token = os.getenv("IG_ACCESS_TOKEN", "").strip()
     if not ids or not token:
+        if ids:
+            print("[Performance] IG_ACCESS_TOKEN not set — skipping Instagram")
         return {}
     try:
         import requests
+        from core.uploader import graph_root
+        root = graph_root(token)
     except ImportError:
-        return {}
+        root = GRAPH_API
+        import requests
 
-    out = {}
+    out, first_error = {}, None
     for media_id in ids:
-        try:
-            resp = requests.get(
-                f"{GRAPH_API}/{media_id}/insights",
-                params={"metric": "plays,reach", "access_token": token}, timeout=60,
-            )
+        for metric in ("views", "plays"):
+            try:
+                resp = requests.get(f"{root}/{media_id}/insights",
+                                    params={"metric": metric, "access_token": token}, timeout=60)
+            except Exception as e:  # noqa: BLE001
+                first_error = first_error or f"{type(e).__name__}: {e}"
+                break
             if resp.status_code != 200:
+                first_error = first_error or f"{metric}: HTTP {resp.status_code} {resp.text[:200]}"
                 continue
-            for metric in resp.json().get("data", []):
-                if metric.get("name") == "plays":
-                    values = metric.get("values") or [{}]
-                    out[media_id] = int(values[0].get("value") or 0)
-        except Exception as e:  # noqa: BLE001
-            print(f"[Performance] Instagram insights unavailable: {type(e).__name__}: {e}")
-            break
+            for m in resp.json().get("data", []):
+                if m.get("name") == metric:
+                    vals = m.get("values") or [{}]
+                    v = vals[0].get("value") if vals else m.get("total_value", {}).get("value")
+                    if v is None:
+                        v = (m.get("total_value") or {}).get("value")
+                    if v is not None:
+                        out[media_id] = int(v)
+            if media_id in out:
+                break
+    if first_error and len(out) < len(ids):
+        print(f"[Performance] Instagram: {len(ids) - len(out)} of {len(ids)} not read — first error: {first_error}")
     return out
 
 
@@ -297,11 +332,6 @@ def summary(path=None):
         "needed": max(MIN_ROWS_TO_WEIGH - len(measured), 0),
         "ready": len(measured) >= MIN_ROWS_TO_WEIGH,
     }
-
-
-if __name__ == "__main__":
-    refresh()
-    print(json.dumps(summary(), indent=2))
 
 
 if __name__ == "__main__":
