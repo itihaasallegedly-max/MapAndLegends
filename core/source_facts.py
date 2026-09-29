@@ -56,10 +56,15 @@ ORIGINALITY_PROMPT = """
 You are checking a Hindi video script for originality against the English
 transcript of another creator's video on the same topic.
 
-Sharing FACTS is fine (names, numbers, dates, causes). What is NOT fine:
-- a scene that is a translation of one of their lines, or a close paraphrase
-  of it (same sentence structure, same comparison, same joke, same rhetorical
-  question, same turn of phrase), or
+Sharing FACTS is fine (names, numbers, dates, causes, superlatives). A line
+that only states a fact in plain words — "the Congo is the world's deepest
+river, over 220 m on average" — is NOT copying, even if their line states the
+same fact: there is no other way to say a number. Flag only EXPRESSION:
+What is NOT fine:
+- a scene that translates one of their lines INCLUDING its distinctive
+  wording beyond the bare fact (their comparison, joke, rhetorical question,
+  image or turn of phrase — "literally created", "from one side to the
+  other"), or
 - the overall script following their sequence of beats line for line, or
 - the same opening hook or the same closing line.
 
@@ -284,17 +289,17 @@ def viewer_review(client, data, call_model=None, types=None,
         out = _call(client, call_model, types, prompt, "Rewrite: viewer review", models)
     except Exception as e:  # noqa: BLE001 — a quality pass, not a gate
         print(f"[Review] could not run: {type(e).__name__}: {e}")
-        return None, []
+        return None, [], []
     probs = [p for p in (out.get("problems") or []) if isinstance(p, dict) and p.get("fix")]
     drop = [(int(u["scene"]), str(u["label"])) for u in (out.get("unspoken_labels") or [])
             if isinstance(u, dict) and str(u.get("scene", "")).isdigit() and u.get("label")]
     for p in probs:
         print(f"[Review] scene {p.get('scene')} {p.get('kind')}: {p.get('fix')}")
     if not probs:
-        return None, drop
+        return None, drop, []
     return ("A viewer review found problems: "
             + " ".join(f"Scene {p.get('scene')} ({p.get('kind')}): {p.get('fix')}" for p in probs)
-            + " Fix exactly these and keep everything else."), drop
+            + " Fix exactly these and keep everything else."), drop, probs
 
 
 def drop_labels(segments, drop):

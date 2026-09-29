@@ -33,8 +33,9 @@ load_dotenv()
 WORDS_PER_S = 2.3            # Flow's Hindi read, measured: 109 words -> 47.7s
 MATCH_BAND = 0.08            # aim within +-8% of their runtime
 REWRITE_MIN_S = float(os.getenv("REWRITE_MIN_S", "40"))
-REWRITE_TARGET_MAX_LO = float(os.getenv("REWRITE_TARGET_MAX_LO", "70"))
-REWRITE_MAX_S = float(os.getenv("REWRITE_MAX_S", "95"))
+REWRITE_TARGET_MAX_LO = float(os.getenv("REWRITE_TARGET_MAX_LO", "55"))
+REWRITE_MAX_S = float(os.getenv("REWRITE_MAX_S", "90"))
+REWRITE_HARD_MIN_S = float(os.getenv("REWRITE_HARD_MIN_S", "35"))
 SHORT_TOLERANCE = 0.85       # rejected only if under 85% of theirs (items dropped)
 # Hard ceiling for 9:16 uploads: YouTube Shorts = 3 min, Instagram Reels = 3 min
 PLATFORM_CAP_S = int(os.getenv("PLATFORM_CAP_S", "180"))
@@ -180,6 +181,22 @@ def _norm(t):
     return re.sub(r"[\s\u0964\u0965!?,.:;\"'“”‘’—–-]+", " ", str(t)).strip()
 
 
+# Soft gates (29 Sep, second failed run): style rules the writer is asked to
+# meet on every try, but on the LAST try they become notes, not rejections.
+# Facts, copying, English letters, broken JSON and the platform length limit
+# stay hard on every try. Five of five topics died twice on style alone.
+_LENIENT = {"on": False, "notes": []}
+
+
+def _soft(msg):
+    """Raise on a normal try; on the last try, record the note and carry on."""
+    if _LENIENT["on"]:
+        _LENIENT["notes"].append(msg)
+        print(f"[Prompt 2] last try — accepted with a style note: {msg[:140]}")
+        return
+    raise ScriptGenerationError(msg)
+
+
 def check_story(segments, hook=None):
     """The narration must read as one thread. Raises with what to fix."""
     if NARRATION_LANG != "hi" or len(segments) < 3:
@@ -188,7 +205,7 @@ def check_story(segments, hook=None):
             if not LINKERS.intersection(_norm(sg.get("text", "")).split()[:4])]
     allowed = (len(segments) - 1) // 4          # one in four may link by content alone
     if len(cold) > allowed:
-        raise ScriptGenerationError(
+        _soft(
             f"Scenes {cold} start a new subject cold. Each line after the first must pick up "
             f"from the one before: open it with a linking word (लेकिन, फिर, इसीलिए, तो, "
             f"इसके बाद, जवाब में, यानी, आखिर में ...) or refer back to what was just said.")
@@ -811,12 +828,15 @@ def validate_script(data, topic_spec, window=None, faithful=False):
     if window and not faithful and estimated_audio_s < window[0] * SHORT_TOLERANCE:
         need = int(window[0] * WORDS_PER_S)
         if NARRATION_MODE == "rewrite":
-            raise ScriptGenerationError(
+            if estimated_audio_s < REWRITE_HARD_MIN_S:
+                _LENIENT["on"] = False      # far too short is never a style note
+            _soft(
                 f"Script is too short: estimated audio {estimated_audio_s:.1f}s ({total_words} "
                 f"words); it should run {window[0]:.0f}-{window[1]:.0f}s — write about "
                 f"{int(window[0] * WORDS_PER_S)}+ words by using more of the research notes "
                 f"(one or two more scenes), keeping every linking word and the one-way order.")
-        raise ScriptGenerationError(
+        else:
+          raise ScriptGenerationError(
             f"Script is too short for the competitor video it remakes: estimated audio "
             f"{estimated_audio_s:.1f}s ({total_words} words), theirs needs about "
             f"{window[0]:.0f}-{window[1]:.0f}s — write about {need}+ words and cover every "
@@ -1367,7 +1387,7 @@ def generate_script_prompt2(topic_spec):
         # of the best of them (29 Sep: four topics died on "too short").
         lo_, hi_ = window
         lo_ = max(REWRITE_MIN_S, min(lo_, REWRITE_TARGET_MAX_LO))
-        window = (lo_, min(max(hi_, lo_ + 15), REWRITE_MAX_S))
+        window = (lo_, min(max(hi_, lo_ + 20), REWRITE_MAX_S))
         print(f"[Rewrite] length is ours: {window[0]:.0f}-{window[1]:.0f}s "
               f"(theirs {competitor_s:.0f}s)")
     if window:
@@ -1650,7 +1670,11 @@ def generate_script_prompt2(topic_spec):
     # promises four parts but never counts them"). Hand them back and retry the
     # SAME topic, instead of spending the next competitor video to learn it.
     correction, history = "", []
+    review_rounds = 0
+    _LENIENT["notes"] = []
     for script_try in range(1, STORY_RETRIES + 1):
+        _LENIENT["on"] = script_try == STORY_RETRIES
+        _LENIENT["notes"] = []
         # Every earlier reason, not only the last one: on 29 Sep each retry
         # fixed the reason it was given and reintroduced the one before
         # (cold scenes -> too short -> cold scenes), and five topics died.
@@ -1761,13 +1785,22 @@ def generate_script_prompt2(topic_spec):
                 data["source_notes"] = source_notes
                 # Would a viewer follow it? Hook, one-way geography, true links,
                 # exact facts, an honest CTA, a payoff, Hindi spellings.
-                review, unspoken = source_facts.viewer_review(
+                # Its style notes (hook, order, link, cta, ending, spelling) get ONE
+                # revision; the critic always finds something, so it is not asked
+                # to be satisfied twice. A "fact" note stays blocking — and the
+                # grounded fact-check below is the real gate for facts.
+                review, unspoken, probs = source_facts.viewer_review(
                     client, data, call_model=model_client.call_model, types=types)
-                if review and script_try < STORY_RETRIES:
+                blocking = [p for p in probs if str(p.get("kind")).lower() == "fact"]
+                if review and (blocking or review_rounds == 0) and script_try < STORY_RETRIES:
+                    review_rounds += 1
                     raise ScriptGenerationError(review)
-                if review:
+                if blocking:
                     raise ScriptGenerationError(
-                        f"Viewer review still failing after {STORY_RETRIES} tries: {review}")
+                        f"Viewer review still reports a wrong fact after {STORY_RETRIES} tries: {review}")
+                if review:
+                    _LENIENT["notes"].append(review)
+                    print("[Review] style notes accepted after one revision")
                 gone = source_facts.drop_labels(data["segments"], unspoken)
                 if gone:
                     print(f"[Review] removed {gone} label(s) the narration never says: {unspoken}")
@@ -1796,6 +1829,8 @@ def generate_script_prompt2(topic_spec):
                     print(f"[CTA] script's midroll_cta unusable ({why}) — asking for the line alone")
                     data["midroll_cta"] = write_midroll_cta(client, types, data)
             insert_midroll_cta(data)
+            if _LENIENT["notes"]:
+                data["quality_notes"] = list(_LENIENT["notes"])
             break
         except ScriptGenerationError as err:
             if script_try == STORY_RETRIES:
