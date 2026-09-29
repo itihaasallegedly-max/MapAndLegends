@@ -335,6 +335,22 @@ def _label_overlay(path, labels, size=(W, H), base=None):
     return path
 
 
+def _with_locator(path, base, locator, size):
+    """The clip's overlay with the locator-map inset composited on top."""
+    try:
+        from PIL import Image
+        img = Image.open(base).convert("RGBA") if base else Image.new("RGBA", size, (0, 0, 0, 0))
+        loc = Image.open(locator).convert("RGBA")
+        if loc.size != img.size:
+            loc = loc.resize(img.size)
+        img.alpha_composite(loc)
+        img.save(path)
+        return path
+    except Exception as e:  # noqa: BLE001 — an inset is never worth a failed render
+        log(f"locator inset skipped: {type(e).__name__}: {e}")
+        return base
+
+
 def _audio_bed():
     d = BASE_DIR / "brand" / "audio"
     if not d.is_dir():
@@ -416,8 +432,11 @@ def stitch(clips, reel_path, work_dir, size=(W, H)):
     for k, src in enumerate(clips, 1):
         is_cta = src.get('is_cta') if isinstance(src, dict) else False
         labels = src.get('labels') if isinstance(src, dict) else None
+        locator = src.get('locator') if isinstance(src, dict) else None
         src = Path(src['out']) if isinstance(src, dict) else Path(src)
         clip_overlay = _label_overlay(work / f"ov{k:02d}.png", labels, size, overlay)
+        if locator and not is_cta:
+            clip_overlay = _with_locator(work / f"ovl{k:02d}.png", clip_overlay, locator, size)
         overlay_k = clip_overlay
         d = probe_duration(src)
         if d <= 0.2:
@@ -538,10 +557,90 @@ def render_reel(script_data, output_dir, slug, aspect="9:16"):
             raise AssetGenerationError(
                 f"{len(still)}/{len(clips)} clip(s) not downloaded ({code}); "
                 f"the {len(clips) - len(still)} on disk are kept for --resume")
+    if os.getenv("VOICE_DRIFT_FIX", "1") != "0":
+        _fix_voice_drift(clips, job_path, aspect)
+    if os.getenv("LOCATOR_MAP", "1") != "0":
+        _attach_locator(clips, script_data, output_dir, slug, aspect)
     reel = reel_path_for(output_dir, slug, aspect)
     if os.getenv("FLOW_REEL_SUFFIX"):
         reel = str(reel).replace(".mp4", os.getenv("FLOW_REEL_SUFFIX") + ".mp4")
     return str(stitch(clips, reel, output_dir, SIZES[aspect]))
+
+
+VOICE_MAX_REGEN = int(os.getenv("VOICE_MAX_REGEN", "3"))
+
+
+def _fix_voice_drift(clips, job_path, aspect):
+    """Regenerate, once, the clips whose narrator pitch is off the reel's median.
+
+    Each regeneration costs Flow credits, so at most VOICE_MAX_REGEN clips a reel
+    and only once each: the first take is kept as <nn>.drift1.mp4, and whichever
+    take is closer to the median is the one used. Never fails the render.
+    """
+    try:
+        from core.voice_check import outliers
+    except Exception as e:  # noqa: BLE001
+        log(f"voice check skipped: {e}")
+        return
+    outs = [Path(c["out"]) for c in clips]
+    med, pitch, off = outliers(outs)
+    if not med:
+        log("voice check: could not measure the narrator — skipped")
+        return
+    log(f"[{aspect}] narrator pitch median {med:.0f} Hz: "
+        + " ".join(f"{i + 1}:{v:.0f}" for i, v in pitch.items() if v))
+    todo = []
+    for i in off:
+        first = outs[i].with_suffix(".drift1.mp4")
+        if first.exists():
+            continue                       # already regenerated once
+        if len(todo) >= VOICE_MAX_REGEN:
+            break
+        outs[i].rename(first)
+        todo.append(i)
+        log(f"clip {i + 1}: {pitch[i]:.0f} Hz is {abs(pitch[i] / med - 1):.0%} off — regenerating once")
+    if not todo:
+        return
+    run_flow(job_path)
+    from core.voice_check import voice_pitch
+    for i in todo:
+        first = outs[i].with_suffix(".drift1.mp4")
+        if not outs[i].exists():
+            first.rename(outs[i])
+            log(f"clip {i + 1}: regeneration did not arrive — keeping the first take")
+            continue
+        new = voice_pitch(outs[i])
+        if new is None or abs(new / med - 1) >= abs(pitch[i] / med - 1):
+            outs[i].rename(outs[i].with_suffix(".drift2.mp4"))
+            first.rename(outs[i])
+            log(f"clip {i + 1}: new take {new or 0:.0f} Hz is no closer — keeping the first take")
+        else:
+            log(f"clip {i + 1}: new take {new:.0f} Hz (was {pitch[i]:.0f}) — using it")
+
+
+def _attach_locator(clips, script_data, output_dir, slug, aspect):
+    """Mark the clips right after the hook to carry a real locator map
+    (core/locator_map.py, drawn from geo/*.geojson, never by a model)."""
+    try:
+        from core import locator_map
+        spec = None
+        spec_path = naming.path(output_dir, slug, "topic_spec")
+        if os.path.exists(spec_path):
+            with open(spec_path, encoding="utf-8") as f:
+                spec = json.load(f)
+        tag = "" if aspect == "9:16" else "_169"
+        png = locator_map.render(script_data, os.path.join(output_dir, f"{slug}_locator{tag}.png"),
+                                 frame=SIZES[aspect], topic_spec=spec)
+        if not png:
+            log("locator map: nothing in the script matches the map data — no inset")
+            return
+        chosen = locator_map.scenes_for(script_data.get("segments"))
+        for i, c in enumerate(clips, 1):
+            if i in chosen and not c.get("is_cta"):
+                c["locator"] = png
+        log(f"locator map on clip(s) {sorted(chosen)}: {locator_map.match(script_data, spec)}")
+    except Exception as e:  # noqa: BLE001
+        log(f"locator map skipped: {type(e).__name__}: {e}")
 
 
 def reel_path_for(output_dir, slug, aspect="9:16"):
