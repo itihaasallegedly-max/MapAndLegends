@@ -36,6 +36,12 @@ design. Ignore the words the narrator says; list everything else you hear.
   (marketplace murmur, city traffic, battlefield). For each: the second it
   starts, how long it lasts, how loud it sits against the voice, and what is on
   screen at that moment.
+- Comic and meme audio especially: a vocal clip, choir or crowd shouting,
+  screaming, a "bruh"/"oh no" voice, record scratch, sad trombone, slide
+  whistle, a sudden silence. These usually land a joke right after the
+  narrator trails off ("...something like") — describe exactly what it is
+  (a slide whistle is not a choir shouting); mark it "loud" if it cuts in over
+  or instead of the voice.
 A missed sound is the failure this list exists to prevent. Do not invent a
 sound you do not hear.
 

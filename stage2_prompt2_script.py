@@ -111,7 +111,24 @@ HINDI_FAITHFUL_BRIEF = HINDI_BRIEF.replace(
     """Their narration is
     transcribed below, line by line. TRANSLATE it into natural spoken Hindi —
     fluent, the way a Hindi narrator would say it, but every line and every
-    piece of information kept, in their order.""")
+    piece of information kept, in their order.""") + """
+    SPOKEN HINDI, NOT BOOK HINDI. Write it the way a popular Hindi YouTuber
+    talks to a friend:
+    - Everyday words over Sanskritised ones: कहानी not किंवदंती, बॉर्डर/सीमा
+      not ज़मीनी सीमा साझा करना, आखिर में not अंततः, पक्का/ठीक-ठीक not सटीक,
+      बाँटना not विभाजित करना, हिस्सा not भाग. Common English words Indians say
+      are fine: बॉर्डर, आइलैंड, वाइन, जिन, लेजेंड, ट्रीटी, रिएक्शन.
+    - Translate the MEANING correctly: "Kingdom of the Netherlands" is
+      नीदरलैंड्स का किंगडम / नीदरलैंड्स (not साम्राज्य = empire); "wine" is
+      वाइन (not शराब = any alcohol); "walked faster" is तेज़ चला (not
+      तेज़ी से पैदल यात्रा की).
+    - Short and tight: say each thing once, drop filler (कि, जो, वह, था/थी
+      where the sentence works without them). The Hindi must be spoken in about
+      the same time as their English, so it has to be SHORTER in words than a
+      literal translation — cut words, never facts.
+"""
+
+FLOW_HINDI_WPS = float(os.getenv("FLOW_HINDI_WPS", "2.75"))   # measured 29 Sep: 294 words -> 106.8s
 
 STORY_RETRIES = int(os.getenv("PROMPT2_STORY_RETRIES", "3"))
 STORY_BRIEF = """
@@ -285,6 +302,83 @@ def _dump_raw(raw, err):
         pass
 
 
+MAX_WPS = 3.4
+_PACE_LENGTHS = (4, 6, 8, 10)
+
+
+def _fit_len(words):
+    """Smallest valid scene length that carries `words` at <= MAX_WPS, or None."""
+    return next((L for L in _PACE_LENGTHS if words / L <= MAX_WPS), None)
+
+
+def _resize_beats(beats, n):
+    beats = list(beats or [])
+    if not beats:
+        return beats
+    while len(beats) < n:
+        beats.append(beats[-1])
+    return beats[:n]
+
+
+def _split_text(text):
+    """Split at the sentence or clause boundary nearest the middle."""
+    words = text.split()
+    mid = len(words) / 2
+    best = None
+    for strong in (True, False):
+        marks = "।?!.\u0965" if strong else ",;:—-"
+        for k in range(1, len(words)):
+            if words[k - 1][-1:] in marks:
+                if best is None or abs(k - mid) < abs(best - mid):
+                    best = k
+        if best is not None:
+            break
+    if best is None:
+        best = int(round(mid))
+    return " ".join(words[:best]), " ".join(words[best:])
+
+
+def _repair_pace(segments, depth=0):
+    out = []
+    for seg in segments:
+        text = str(seg.get("text", "")).strip()
+        words = len(text.split())
+        sec = float(seg.get("seconds") or 0)
+        if sec <= 0 or words / sec <= MAX_WPS:
+            out.append(seg)
+            continue
+        L = _fit_len(words)
+        if L is not None:
+            print(f"[Pace] {words} words in {sec:.0f}s ({words/sec:.1f} w/s) → scene lengthened to {L}s")
+            seg = dict(seg)
+            seg["seconds"] = float(L)
+            if seg.get("per_second"):
+                seg["per_second"] = _resize_beats(seg["per_second"], L)
+            out.append(seg)
+            continue
+        if depth >= 3:
+            raise ScriptGenerationError(
+                f"Segment is too fast even after splitting ({words} words). "
+                f"Break it down into shorter sentences.")
+        a_txt, b_txt = _split_text(text)
+        parts = []
+        beats = list(seg.get("per_second") or [])
+        used = 0
+        for t in (a_txt, b_txt):
+            n = _fit_len(len(t.split())) or 10
+            part = dict(seg)
+            part["text"] = t
+            part["seconds"] = float(n)
+            if beats:
+                part["per_second"] = _resize_beats(beats[used:] or beats[-1:], n)
+                used = min(used + n, len(beats))
+            parts.append(part)
+        print(f"[Pace] {words} words would not fit a 10s scene → split into "
+              f"{parts[0]['seconds']:.0f}s + {parts[1]['seconds']:.0f}s")
+        out.extend(_repair_pace(parts, depth + 1))
+    return out
+
+
 def validate_script(data, topic_spec, window=None, faithful=False):
     """Enforce the contract. Returns the script; raises on any violation."""
     missing = [k for k in REQUIRED_KEYS if k not in data]
@@ -296,6 +390,7 @@ def validate_script(data, topic_spec, window=None, faithful=False):
         raise ScriptGenerationError(
             f"Expected at least 3 segments, got {len(segments) if isinstance(segments, list) else type(segments).__name__}"
         )
+    segments = list(segments)
     for i, seg in enumerate(segments):
         if not isinstance(seg, dict) or not str(seg.get("text", "")).strip():
             raise ScriptGenerationError(f"Segment {i} has no spoken text: {seg!r}")
@@ -314,10 +409,13 @@ def validate_script(data, topic_spec, window=None, faithful=False):
         except (TypeError, ValueError):
             raise ScriptGenerationError(f"Segment {i} has a non-numeric 'seconds': {seg!r}")
         
-        words = len(str(seg.get("text", "")).split())
-        sec = seg["seconds"]
-        if sec > 0 and (words / sec) > 3.4:
-            raise ScriptGenerationError(f"Segment {i} is too fast for TTS ({words} words in {sec}s = {words/sec:.1f} w/s). The limit is 3.4 w/s. Break it down into shorter sentences.")
+    # Pace: a segment over MAX_WPS used to reject the whole script, and a
+    # 3.5 w/s line cost a full Gemini round-trip (5 of those = no reel that
+    # day, 28 & 29 Sep). Now it is repaired in place: lengthen the scene to
+    # the next 4/6/8/10 that fits, and only if even 10 s is too short, split
+    # the line at a sentence/clause boundary into two scenes.
+    segments = _repair_pace(segments)
+    data["segments"] = segments
 
     # The scene grammar: 4/6/8/10 seconds a scene, one prompt per second, a
     # full audio description per scene. A model that answered with 15-second
@@ -452,7 +550,7 @@ def validate_script(data, topic_spec, window=None, faithful=False):
     if topic_spec.get("kind") == "set":
         validate_set(data, topic_spec)
     normalize_caption(data, topic_spec)
-    maybe_append_cta(data, topic_spec)
+    # maybe_append_cta(data, topic_spec)
 
     return data
 
@@ -964,20 +1062,28 @@ def generate_script_prompt2(topic_spec):
                       f"{w_lo}-{w_hi} (that is {lo:.0f}-{hi:.0f} seconds spoken). "
                       f"Under {int(lo * SHORT_TOLERANCE * WORDS_PER_S)} "
                       f"words is rejected because it means content was dropped. "
-                      f"Total scene 'seconds' must not exceed {PLATFORM_CAP_S}.")
+                      f"Total scene 'seconds' must not exceed {PLATFORM_CAP_S}. "
+                      f"CRITICAL TTS LIMIT: Max 3.4 words per second. For any segment, (word_count / seconds) MUST be <= 3.4.")
         scenes_rule = (f"Use as many scenes as the content needs — roughly {int(math.ceil(lo / 8))} to "
                        f"{int(math.ceil(hi / 6))} at this length, more if needed. "
                        f"Total 'seconds' across all scenes must not exceed {PLATFORM_CAP_S}.")
         sys_length = (f"Match the competitor's length: about {w_lo}-{w_hi} words of narration. "
-                      f"Total scene 'seconds' must not exceed {PLATFORM_CAP_S}. ")
+                      f"Total scene 'seconds' must not exceed {PLATFORM_CAP_S}. "
+                      f"CRITICAL TTS LIMIT: Max 3.4 words per second per segment.")
     if faithful:
         max_words_cap = int(PLATFORM_CAP_S * WORDS_PER_S)
-        words_rule = (f"WORD COUNT: whatever a faithful Hindi translation of EVERY competitor line "
-                      f"needs — but total scene 'seconds' must not exceed {PLATFORM_CAP_S} "
+        budget = int((window[1] if window else PLATFORM_CAP_S) * FLOW_HINDI_WPS)
+        words_rule = (f"WORD BUDGET: at most about {budget} Hindi words in total across all 'text' "
+                      f"fields — that is how many fit in the competitor's runtime at Flow's Hindi "
+                      f"speaking rate. Every line is still translated; stay inside the budget by "
+                      f"saying things in fewer, simpler spoken words, never by dropping a line. "
+                      f"Total scene 'seconds' must not exceed {PLATFORM_CAP_S} "
                       f"(≈{max_words_cap} words). Nothing cut to save words except to stay within the "
-                      f"3-minute platform limit.")
+                      f"3-minute platform limit. "
+                      f"CRITICAL TTS LIMIT: Max 3.4 words per second. For any segment, (word_count / seconds) MUST be <= 3.4.")
         sys_length = ("Translate the competitor's narration line by line into Hindi: every line, "
-                      f"in order, nothing added, nothing dropped. Total 'seconds' ≤{PLATFORM_CAP_S}. ")
+                      f"in order, nothing added, nothing dropped. Total 'seconds' ≤{PLATFORM_CAP_S}. "
+                      f"CRITICAL TTS LIMIT: Max 3.4 words per second per segment.")
     if not window:
         max_words_cap = int(PLATFORM_CAP_S * WORDS_PER_S)
         length_brief = (f"LENGTH: no fixed length. Tell the whole topic; the content decides how long it runs. "
@@ -985,8 +1091,10 @@ def generate_script_prompt2(topic_spec):
         scenes_rule = f"Use as many scenes as the content needs. Total 'seconds' must not exceed {PLATFORM_CAP_S}."
         if not faithful:
             words_rule = (f"WORD COUNT: as many words as the topic needs, up to ~{max_words_cap} "
-                          f"(the {PLATFORM_CAP_S}s platform ceiling for 9:16 Shorts/Reels).")
-            sys_length = (f"The content decides the length; stay within the {PLATFORM_CAP_S}s platform limit. ")
+                          f"(the {PLATFORM_CAP_S}s platform ceiling for 9:16 Shorts/Reels). "
+                          f"CRITICAL TTS LIMIT: Max 3.4 words per second. For any segment, (word_count / seconds) MUST be <= 3.4.")
+            sys_length = (f"The content decides the length; stay within the {PLATFORM_CAP_S}s platform limit. "
+                          f"CRITICAL TTS LIMIT: Max 3.4 words per second per segment.")
     refs_field = ('"narration_refs": ["<ids of the competitor lines this scene translates, e.g. N3, N4>"],'
                   if faithful else "")
     competitor_rule = (
@@ -1078,6 +1186,7 @@ def generate_script_prompt2(topic_spec):
     Rules:
     - {words_rule} Short, punchy sentences — about 12 words for a 6-second scene, 16 for 8 seconds, 20 for 10. The clip is cut to the line's length, so a line much shorter than its scene leaves dead air.
     - Write about the topic presented in the video.
+    - CRITICAL CTA INSTRUCTION: Insert a smooth mid-roll "Like, Comment, and Subscribe" CTA (Call to Action) somewhere in the middle of the script. Do NOT put it at the very end. The transition into the CTA must be poetic and naturally woven into the content's flow, as smooth as a poem.
     - Every scene's "seconds" must be exactly 4, 6, 8 or 10. No other value —
       not 5, not 12, not 15. These are the lengths a text-to-video model
       actually generates, so a scene is one generation and never a join.
@@ -1248,6 +1357,16 @@ def generate_script_prompt2(topic_spec):
                     print(f"[NarrationMap] accepted with {len(dropped)} line(s) not referenced"
                           + (f"; {problem}" if problem else ""))
                 data["narration_map"] = nm
+            if faithful and window:
+                budget = int(window[1] * FLOW_HINDI_WPS)
+                total = sum(len(str(sg.get("text", "")).split()) for sg in data["segments"])
+                if total > budget * 1.12 and script_try < STORY_RETRIES:
+                    raise ScriptGenerationError(
+                        f"Too long: {total} Hindi words, the budget is about {budget} "
+                        f"(the competitor runs {window[1]:.0f}s at most). Keep every line but "
+                        f"say each one in fewer, everyday spoken words — cut filler, not facts.")
+                if total > budget * 1.12:
+                    print(f"[Prompt 2] accepted over budget: {total} words vs {budget}")
             miss = sound_map.missing(data["segments"], sm)
             if miss and script_try < STORY_RETRIES:
                 raise ScriptGenerationError(sound_map.missing_reason(miss))

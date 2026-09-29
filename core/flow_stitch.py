@@ -167,6 +167,12 @@ def build_prompt(seg, style="", index=1, total=1, seconds=None, music_style=None
         parts.append(f"Background: {bg['description']}")
     if style:
         parts.append(f"Visual style: {style}.")
+    # 29 Sep: "Europeans fought over the Caribbean" came out with invented
+    # flags (a German/Portuguese hybrid, a Serbian-looking tricolour).
+    if re.search(r"\bflags?\b", shot + " " + " ".join(map(str, beats)), re.I):
+        parts.append("FLAGS: every flag is the exact, real national flag of the country it "
+                     "stands for — correct colours, stripe order and emblem; no invented or "
+                     "blended flags; at most three flags on screen at once, large and clear.")
     neg_prompt = NEG.format(orient="horizontal" if wide else "vertical")
     if seg.get("_cta"):
         neg_prompt = neg_prompt.replace(", no on-screen text, no captions, no subtitles, no watermark, no logos", "")
@@ -187,13 +193,17 @@ def build_prompt(seg, style="", index=1, total=1, seconds=None, music_style=None
     # Music is laid once under the whole reel at stitch time; per-clip music
     # would restart at every cut. Ambience was reaching -24 dB after the line,
     # which is what the gaps between scenes were full of.
+    # A punchline voice (crowd shouting, a choir, a meme clip) is itself an
+    # effect, so the blanket "no other voices" must not suppress it.
+    vocal_fx = any(re.search(r"shout|scream|choir|crowd|cheer|laugh|voice|gasp|chant", f, re.I) for f in fxs)
+    no_voices = "" if vocal_fx else "No other voices, no singing. "
     tail = ("SOUND: the narration is the main sound. "
             + (("Very quiet background: " + "; ".join(sound) + ", far below the voice. ") if sound else "")
             + (("SOUND EFFECTS, each one clearly heard at its moment, sitting just under the "
                 "voice and never covering a word: " + "; ".join(fxs) + ". ") if fxs else "")
             + (f"Soft background music from 0 seconds to the end: {music_style or MUSIC_STYLE}; always much quieter "
-               "than the narration, steady volume, no swell, no sudden start or stop. No other voices, "
-               "no singing. " if FLOW_MUSIC else "No music, no other voices, no singing. ")
+               "than the narration, steady volume, no swell, no sudden start or stop. " + no_voices
+               if FLOW_MUSIC else "No music. " + no_voices)
             + (("When the narrator finishes, only the soft music continues." if FLOW_MUSIC
                 else "When the narrator finishes, the clip ends almost silent.") if text else ""))
     parts.append(tail if text else tail + " No voiceover.")

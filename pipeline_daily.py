@@ -353,8 +353,19 @@ def run_render_pipeline(slug, generate_only=False):
             print(f"[render] 16:9 already on disk: {wide}")
             reels["16:9"] = wide
         else:
+            # Generated in Flow as its own widescreen batch (the user's decision,
+            # 26 Sep: double credits, no crop/pad). Padding the vertical reel
+            # onto a blurred background is only the fallback when Flow fails,
+            # or when FLOW_169=0 in .env.
             try:
-                reels["16:9"] = pad_916_to_169(reels["9:16"], wide)
+                if os.getenv("FLOW_169", "1") != "0":
+                    try:
+                        reels["16:9"] = render_reel(script_data, output_dir, slug, "16:9")
+                    except AssetGenerationError as e:
+                        print(f"[render] Flow 16:9 failed ({e}) — padding the 9:16 instead")
+                        reels["16:9"] = pad_916_to_169(reels["9:16"], wide)
+                else:
+                    reels["16:9"] = pad_916_to_169(reels["9:16"], wide)
             except AssetGenerationError as e:
                 print(f"\n!! 16:9 render failed — this topic goes out in 9:16 only: {e}")
                 _append_jsonl(RUNS_FILE, {
