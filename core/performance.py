@@ -190,31 +190,70 @@ def _fetch_instagram(ids):
     return out
 
 
+def sync_from_published(path=None):
+    """Make sure every video in published.json has a row here.
+
+    record() stopped being called when the pipeline was rewritten, so on
+    29 Sep this ledger held one stale row (Louisiana, no ids) while 14 reels
+    were live. published.json is updated on every successful upload, retries
+    included, so it is the source of truth for WHAT is live; this ledger adds
+    the view counts. Existing rows keep their counts; missing ids are filled.
+    """
+    from core import published_ledger
+    rows = load(path)
+    by_topic = {r.get("topic"): r for r in rows}
+    added = 0
+    for slug, e in published_ledger.load().items():
+        plat = e.get("platforms") or {}
+        topic = e.get("topic") or slug
+        row = by_topic.get(topic)
+        if row is None:
+            row = {"topic": topic, "subject": None, "series": None, "kind": "single",
+                   "set_size": None, "title": e.get("title") or "", "caption": "",
+                   "published_at": e.get("first_live"), "views": None,
+                   "views_youtube": None, "views_youtube_169": None,
+                   "views_instagram": None, "fetched_at": None}
+            rows.append(row)
+            by_topic[topic] = row
+            added += 1
+        row["slug"] = slug
+        for key, p in (("youtube_id", "youtube"), ("youtube_169_id", "youtube_169"),
+                       ("instagram_id", "instagram")):
+            if not row.get(key) and (plat.get(p) or {}).get("id"):
+                row[key] = plat[p]["id"]
+    if added:
+        save(rows, path)
+        print(f"[Performance] {added} published video(s) added from published.json")
+    return rows
+
+
 def refresh(path=None):
     """Update every row's view counts in place. Returns (rows, updated_count)."""
-    rows = load(path)
+    rows = sync_from_published(path)
     if not rows:
         print("[Performance] ledger is empty — nothing published through the "
               "pipeline yet, so there is nothing to learn from")
         return rows, 0
 
-    yt = _fetch_youtube([r["youtube_id"] for r in rows if r.get("youtube_id")])
+    yt = _fetch_youtube([r[k] for r in rows for k in ("youtube_id", "youtube_169_id") if r.get(k)])
     ig = _fetch_instagram([r["instagram_id"] for r in rows if r.get("instagram_id")])
     now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
 
     updated = 0
     for row in rows:
         y = yt.get(row.get("youtube_id"))
+        w = yt.get(row.get("youtube_169_id"))
         i = ig.get(row.get("instagram_id"))
-        if y is None and i is None:
+        if y is None and i is None and w is None:
             continue
         row["views_youtube"] = y if y is not None else row.get("views_youtube")
+        row["views_youtube_169"] = w if w is not None else row.get("views_youtube_169")
         row["views_instagram"] = i if i is not None else row.get("views_instagram")
         # One number for the weights. Summed rather than maxed: a topic that
         # does 200K on each platform is worth more than one that does 200K on
         # one, and the medians only ever compare rows to each other.
-        row["views"] = sum(v for v in (row["views_youtube"], row["views_instagram"])
-                           if v is not None)
+        row["views"] = sum(v for v in (row["views_youtube"], row.get("views_youtube_169"),
+                                       row["views_instagram"]) if v is not None)
         row["fetched_at"] = now
         updated += 1
 
@@ -263,3 +302,18 @@ def summary(path=None):
 if __name__ == "__main__":
     refresh()
     print(json.dumps(summary(), indent=2))
+
+
+if __name__ == "__main__":
+    # ./venv/bin/python -m core.performance   — refresh and print every live video's views
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(os.path.join(BASE_DIR, ".env"))
+    except ImportError:
+        pass
+    rows, n = refresh()
+    for r in sorted(rows, key=lambda r: r.get("published_at") or ""):
+        print(f"{str(r.get('published_at') or '')[:10]}  {str(r.get('topic'))[:48]:<48} "
+              f"YT {r.get('views_youtube') if r.get('views_youtube') is not None else '-':>7}  "
+              f"YT16:9 {r.get('views_youtube_169') if r.get('views_youtube_169') is not None else '-':>6}  "
+              f"IG {r.get('views_instagram') if r.get('views_instagram') is not None else '-':>7}")
