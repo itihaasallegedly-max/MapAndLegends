@@ -440,7 +440,11 @@ def resume_unrendered(generate_only=False, limit=5):
         return []
 
     pending = []
-    for slug in sorted(os.listdir(outputs_dir)):
+    # Sort newest first so today's fresh script is resumed before older backlog items
+    candidates = sorted(os.listdir(outputs_dir),
+                        key=lambda s: os.path.getmtime(os.path.join(outputs_dir, s)) if os.path.exists(os.path.join(outputs_dir, s)) else 0,
+                        reverse=True)
+    for slug in candidates:
         output_dir = os.path.join(outputs_dir, slug)
         if not os.path.isdir(output_dir) or slug.startswith("_"):
             continue
@@ -448,6 +452,21 @@ def resume_unrendered(generate_only=False, limit=5):
         gate_path = naming.path(output_dir, slug, "factcheck")
         reel_path = naming.path(output_dir, slug, "reel")
         if not os.path.exists(script_path) or os.path.exists(reel_path):
+            continue
+        # Guard against runaway credit spend: never trigger full Flow video generation
+        # on ancient scripts from weeks ago that have 0 clips. Only resume if modified
+        # in the last 36 hours or if clips already exist on disk.
+        mtime = os.path.getmtime(output_dir) if os.path.exists(output_dir) else 0
+        has_clips = False
+        for sub in ("flow_music", "flow"):
+            p_sub = os.path.join(output_dir, sub)
+            if os.path.exists(p_sub) and any(f.endswith(".mp4") for f in os.listdir(p_sub)):
+                has_clips = True
+                break
+        if (datetime.datetime.now().timestamp() - mtime > 36 * 3600) and not has_clips:
+            continue
+        state = publish_queue.load(slug)
+        if state and state.get("abandoned"):
             continue
         if publish_queue.is_live_everywhere(slug):
             continue  # published, and its media deliberately deleted afterwards
@@ -482,12 +501,24 @@ def resume_unrendered(generate_only=False, limit=5):
 
 def run_daily_pipeline(force_topic=None, generate_only=False, script_only=False,
                        max_attempts=5):
-    """Legacy entrypoint that ties both phases together."""
-    slug = run_script_generation(force_topic, max_attempts)
-    if not slug or script_only:
-        return slug
-    
-    return run_render_pipeline(slug, generate_only)
+    """Orchestrator that ensures a video is successfully rendered and published."""
+    for attempt in range(max_attempts):
+        slug = run_script_generation(force_topic, max_attempts=1)
+        if not slug:
+            print(f"[daily] Script generation failed on attempt {attempt + 1}/{max_attempts}.")
+            if force_topic:
+                break
+            continue
+        if script_only:
+            return slug
+        
+        res = run_render_pipeline(slug, generate_only)
+        if res:
+            return res
+        print(f"\n[daily] Render failed on topic '{slug}' (attempt {attempt + 1}/{max_attempts}). Trying next topic from backlog...")
+        if force_topic:
+            break
+    return None
 
 
 def _finish(started, topic_spec, video_path, publish_result, attempts, generate_only=False):

@@ -22,7 +22,7 @@ Exit 0 = every clip on disk, 2 = Chrome / login problem, 1 = some clip failed.
 Env:
     FLOW_CDP        http://localhost:9222
     FLOW_PROFILE    ~/.dailygeomap_chrome_profile
-    FLOW_MODEL      Omni 1.1 Flash
+    FLOW_MODEL      Veo 3.1 - Lite
     FLOW_QUALITY    720p
     FLOW_TIMEOUT    600   seconds to wait for one clip
 """
@@ -32,7 +32,7 @@ from pathlib import Path
 CDP = os.environ.get("FLOW_CDP", "http://localhost:9222")
 PROFILE = os.path.expanduser(os.environ.get("FLOW_PROFILE", "~/.dailygeomap_chrome_profile"))
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-MODEL = os.environ.get("FLOW_MODEL", "Omni 1.1 Flash")
+MODEL = os.environ.get("FLOW_MODEL", "Veo 3.1 - Lite")
 QUALITY = os.environ.get("FLOW_QUALITY", "720p")
 TIMEOUT = int(os.environ.get("FLOW_TIMEOUT", "600"))
 URL = "https://flow.google.com"
@@ -84,11 +84,15 @@ def pick(page, text):
         page.get_by_text(text, exact=True).first.click(timeout=1500)
         return True
     except Exception:
-        return False
+        try:
+            page.get_by_text(text, exact=False).first.click(timeout=1500)
+            return True
+        except Exception:
+            return False
 
 
 def current_model(page):
-    """Model name Flow shows next to the prompt box (e.g. 'Omni 1.1 Flash')."""
+    """Model name Flow shows next to the prompt box (e.g. 'Veo 3.1 - Lite')."""
     try:
         txt = page.locator("body").inner_text(timeout=5000)
     except Exception:
@@ -96,7 +100,7 @@ def current_model(page):
     if MODEL in txt:
         return MODEL
     import re
-    m = re.findall(r"(Omni[ \w.]*?(?:Flash|Pro|Lite|Quality|Fast)|Veo[ \w.]*?(?:Fast|Quality|Lite|Pro)?)\s*$", txt, re.M)
+    m = re.findall(r"(Omni[ \w.-]*?(?:Flash|Pro|Lite|Quality|Fast)|Veo[ \w.-]*?(?:Fast|Quality|Lite|Pro)?)\s*$", txt, re.M)
     return m[0].strip() if m else None
 
 
@@ -114,13 +118,13 @@ def select_model(page):
             label = (t.inner_text(timeout=1000) or "").strip()
         except Exception:
             continue
-        if not any(w in label for w in ("Omni", "Veo", "Nano", "Flash", "Model", "arrow_drop_down", "expand_more")):
+        if not any(w in label for w in ("Omni", "Veo", "Nano", "Flash", "Model", "Lite", "arrow_drop_down", "expand_more")):
             continue
         try:
             t.click(timeout=2000)
             page.wait_for_timeout(800)
             opt = page.get_by_role("option", name=MODEL).or_(page.get_by_role("menuitem", name=MODEL)) \
-                .or_(page.get_by_text(MODEL, exact=True))
+                .or_(page.get_by_text(MODEL, exact=True)).or_(page.get_by_text(MODEL, exact=False))
             opt.first.click(timeout=2000)
             page.wait_for_timeout(800)
             return True

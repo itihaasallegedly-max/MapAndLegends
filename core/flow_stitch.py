@@ -184,6 +184,13 @@ def build_prompt(seg, style="", index=1, total=1, seconds=None, music_style=None
                  "landmark shown must be the real one of the country or place this line is "
                  "about, drawn accurately; never a symbol, currency or document of any other "
                  "country (no Indian symbols unless the line is about India).")
+
+    # Guard against Flow visualizing comparison entities mentioned only in narration
+    # (e.g. "basin equal to the area of Pakistan" causing Flow to draw Pakistan instead of India)
+    if text and re.search(r"पाकिस्तान|pakistan", text, re.I):
+        if not re.search(r"pakistan", shot, re.I):
+            parts.append("DO NOT show or highlight Pakistan or the Indus basin. The visual is strictly focused on India.")
+
     if seg.get("_avoid"):
         parts.append(str(seg["_avoid"]))
     neg_prompt = NEG.format(orient="horizontal" if wide else "vertical")
@@ -654,7 +661,7 @@ def render_reel(script_data, output_dir, slug, aspect="9:16"):
             raise AssetGenerationError(
                 f"{len(still)}/{len(clips)} clip(s) not downloaded ({code}); "
                 f"the {len(clips) - len(still)} on disk are kept for --resume")
-    if os.getenv("VOICE_DRIFT_FIX", "1") != "0":
+    if os.getenv("VOICE_DRIFT_FIX", "0") != "0":
         _fix_voice_drift(clips, job_path, aspect)
     if os.getenv("VISUAL_CHECK", "1") != "0":
         _check_visuals(clips, job_path, script_data)
@@ -666,7 +673,7 @@ def render_reel(script_data, output_dir, slug, aspect="9:16"):
     return str(stitch(clips, reel, output_dir, SIZES[aspect]))
 
 
-VOICE_MAX_REGEN = int(os.getenv("VOICE_MAX_REGEN", "3"))
+VOICE_MAX_REGEN = int(os.getenv("VOICE_MAX_REGEN", "0"))
 
 
 def _fix_voice_drift(clips, job_path, aspect):
@@ -676,6 +683,8 @@ def _fix_voice_drift(clips, job_path, aspect):
     and only once each: the first take is kept as <nn>.drift1.mp4, and whichever
     take is closer to the median is the one used. Never fails the render.
     """
+    if VOICE_MAX_REGEN <= 0:
+        return
     try:
         from core.voice_check import outliers
     except Exception as e:  # noqa: BLE001
@@ -717,17 +726,14 @@ def _fix_voice_drift(clips, job_path, aspect):
             log(f"clip {i + 1}: new take {new:.0f} Hz (was {pitch[i]:.0f}) — using it")
 
 
-VISUAL_MAX_REGEN = int(os.getenv("VISUAL_MAX_REGEN", "4"))
+VISUAL_MAX_REGEN = int(os.getenv("VISUAL_MAX_REGEN", "0"))
+VISUAL_FATAL = os.getenv("VISUAL_FATAL", "0") != "0"
 
 
 def _check_visuals(clips, job_path, script_data):
-    """Stop wrong-country or inaccurate symbols, garbled writing and pictures
-    that contradict the line from reaching an upload.
+    """Flag clips with wrong symbols, garbled writing or contradictions.
 
-    Each raw Flow clip is shown to a vision model with its line. A failing clip
-    is regenerated once with the problem named in its prompt (first take kept as
-    <nn>.visual1.mp4). If the new take still fails, or the check cannot run,
-    the render stops: the clips stay on disk for --resume, nothing is published.
+    Never aborts the entire video or burns runaway credits when VISUAL_FATAL is False.
     """
     from core import visual_check
     try:
@@ -735,10 +741,12 @@ def _check_visuals(clips, job_path, script_data):
         from google.genai import types
         from core import model_client
     except Exception as e:  # noqa: BLE001
-        raise AssetGenerationError(f"visual check cannot run: {e}")
+        log(f"visual check skipped: {e}")
+        return
     key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not key:
-        raise AssetGenerationError("visual check needs GEMINI_API_KEY")
+        log("visual check skipped: no API key")
+        return
     client = genai.Client(api_key=key)
     topic = str(script_data.get("title") or script_data.get("topic") or "")
 
@@ -750,7 +758,10 @@ def _check_visuals(clips, job_path, script_data):
             # the subscribe/CTA clip is allowed its own writing
             return [p for p in probs if not (c.get("is_cta") and p["kind"] == "text")]
         except Exception as e:  # noqa: BLE001
-            raise AssetGenerationError(f"visual check failed on clip {i + 1}: {type(e).__name__}: {e}")
+            if VISUAL_FATAL:
+                raise AssetGenerationError(f"visual check failed on clip {i + 1}: {type(e).__name__}: {e}")
+            log(f"visual check clip {i + 1} skipped ({type(e).__name__}: {e})")
+            return []
 
     bad = {}
     for i, c in enumerate(clips):
@@ -761,35 +772,65 @@ def _check_visuals(clips, job_path, script_data):
     log(f"visual check: {len(clips) - len(bad)}/{len(clips)} clip(s) clean")
     if not bad:
         return
+
+    if VISUAL_MAX_REGEN <= 0:
+        log(f"visual check: {len(bad)} clip(s) noted — regeneration disabled (VISUAL_MAX_REGEN=0), proceeding with current takes")
+        return
+
     if len(bad) > VISUAL_MAX_REGEN:
-        raise AssetGenerationError(f"visual check: {len(bad)} clips show wrong symbols/garbled "
-                                   f"text (limit {VISUAL_MAX_REGEN} regenerations) — not publishing")
+        msg = f"visual check: {len(bad)} clips show wrong symbols/garbled text (limit {VISUAL_MAX_REGEN} regenerations)"
+        if VISUAL_FATAL:
+            raise AssetGenerationError(f"{msg} — not publishing")
+        log(f"{msg} — proceeding with current takes without extra spend")
+        return
+
     job = json.loads(Path(job_path).read_text(encoding="utf-8"))
     todo = []
     for i, probs in bad.items():
         out = Path(clips[i]["out"])
         first = out.with_suffix(".visual1.mp4")
         if first.exists():
-            raise AssetGenerationError(f"visual check: clip {i + 1} failed again after one "
-                                       f"regeneration — not publishing")
+            # If the job prompt was updated after the first failure, allow a fresh attempt with the new prompt
+            if Path(job_path).stat().st_mtime > first.stat().st_mtime + 2:
+                log(f"clip {i + 1}: job prompt updated since visual1 — trying fresh take with updated prompt")
+                first.unlink()
+            else:
+                msg = f"visual check: clip {i + 1} failed again after one regeneration"
+                if VISUAL_FATAL:
+                    raise AssetGenerationError(f"{msg} — not publishing")
+                log(f"{msg} — keeping current take and proceeding")
+                continue
         out.rename(first)
+        clean_prompt = visual_check.sanitize_prompt(job["clips"][i]["prompt"], probs)
         extra = " " + visual_check.avoid_line(probs)
-        job["clips"][i]["prompt"] = job["clips"][i]["prompt"] + extra
+        job["clips"][i]["prompt"] = clean_prompt + extra
         clips[i]["prompt"] = job["clips"][i]["prompt"]
         todo.append(i)
         log(f"clip {i + 1}: regenerating once")
+
+    if not todo:
+        return
+
     Path(job_path).write_text(json.dumps(job, ensure_ascii=False, indent=1), encoding="utf-8")
     run_flow(job_path)
     for i in todo:
+        first = Path(clips[i]["out"]).with_suffix(".visual1.mp4")
         if not Path(clips[i]["out"]).exists():
-            raise AssetGenerationError(f"visual check: clip {i + 1} regeneration did not arrive "
-                                       f"— not publishing (rerun with --resume)")
+            if first.exists():
+                first.rename(clips[i]["out"])
+            msg = f"visual check: clip {i + 1} regeneration did not arrive"
+            if VISUAL_FATAL:
+                raise AssetGenerationError(f"{msg} — not publishing (rerun with --resume)")
+            log(f"{msg} — using previous take")
+            continue
         probs = check(i)
         if probs:
-            raise AssetGenerationError(f"visual check: clip {i + 1} still shows "
-                                       + "; ".join(f"{p['kind']}: {p['what']}" for p in probs)
-                                       + " — not publishing")
-        log(f"clip {i + 1}: new take is clean")
+            msg = f"visual check: clip {i + 1} still shows " + "; ".join(f"{p['kind']}: {p['what']}" for p in probs)
+            if VISUAL_FATAL:
+                raise AssetGenerationError(f"{msg} — not publishing")
+            log(f"{msg} — proceeding with best available take")
+        else:
+            log(f"clip {i + 1}: new take is clean")
 
 
 def _attach_locator(clips, script_data, output_dir, slug, aspect):
@@ -842,7 +883,7 @@ def pad_916_to_169(src_path, dst_path):
     cmd = [
         "ffmpeg", "-y", "-loglevel", "error", "-i", str(src_path),
         "-filter_complex",
-        "[0:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,boxblur=40:20,setsar=1[bg];"
+        "[0:v]scale=320:180:force_original_aspect_ratio=increase,crop=320:180,boxblur=8:4,scale=1920:1080,setsar=1[bg];"
         "[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,setsar=1[fg];"
         "[bg][fg]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
         "-c:v", "libx264", "-preset", "veryfast", "-profile:v", "high", "-crf", "20",

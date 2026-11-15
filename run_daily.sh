@@ -56,9 +56,15 @@ esac
 
 # A topic is spent once its script passes the gate, so an unrendered script is
 # a topic already paid for. Finish it before drawing anything new tomorrow.
-[ $status -ne 3 ] && "$PY" pipeline_daily.py --resume
+[ $status -ne 3 ] && "$PY" pipeline_daily.py --resume --once-per-day
 
 "$PY" retry_publish.py
+
+# Auto-recovery: If nothing is live yet today, execute a fallback run so the channel never misses an upload
+if ! "$PY" -c "from pipeline_daily import published_today; exit(0 if published_today() else 1)"; then
+  echo "[run_daily] WARNING: No reel live yet today. Running fallback pipeline..."
+  "$PY" pipeline_daily.py --once-per-day --max-attempts=1 || echo "[run_daily] fallback pipeline attempt finished"
+fi
 
 date -u +%FT%TZ > logs/.last_daily
 echo "[run_daily] done $(date -u +%FT%TZ)"

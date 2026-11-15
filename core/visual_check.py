@@ -27,7 +27,7 @@ PROMPT = """You check one short clip of a Hindi geography video before it is pub
 You see {n} frames taken across the clip. The video is about: {topic}
 The narrator says over this clip (Hindi): "{line}"
 
-Report ONLY real problems a viewer would notice:
+Report ONLY real problems a viewer would notice. DO NOT fact-check the narration itself; assume the narration is factually correct and evaluate only if the images contradict it:
 - wrong_symbol: a flag, national emblem, seal, coat of arms, currency, passport/document or landmark that belongs to a country or place the line and the topic are NOT about (e.g. India's emblem or rupees in a clip about France), or a real one drawn clearly wrong (wrong colours, garbled design)
 - contradiction: the picture clearly shows something the line does not say, or the opposite of it
 - text: garbled, misspelled or invented letters or words large enough to notice (ignore tiny specks and correct real writing)
@@ -102,3 +102,18 @@ def avoid_line(problems):
     return ("AVOID (the previous take was rejected for this): " + what + ". "
             "Any flag, emblem, currency or document shown must be the real one of the place "
             "this line is about, with no garbled writing.")
+
+
+def sanitize_prompt(prompt, problems):
+    """If visual check failed due to garbled text or wrong map boundaries,
+    strip cartographic triggers from the prompt so Flow draws pure scenery/landmarks."""
+    kinds = {p.get("kind") for p in problems}
+    new_prompt = prompt
+    if "text" in kinds or "contradiction" in kinds:
+        # Replace map and cartographic keywords with pure visual landscape
+        new_prompt = re.sub(r"\b(district|regional|administrative|boundary|terrain)\s+map\b", "scenic landscape illustration", new_prompt, flags=re.I)
+        new_prompt = re.sub(r"\bmap\s+(highlighting|showing|of)\b", r"scenic illustration \1", new_prompt, flags=re.I)
+        new_prompt = re.sub(r"\bhighlighting\s+([a-zA-Z\s]+)\s+constituencies\b", "showing scenic views of the region", new_prompt, flags=re.I)
+        new_prompt = re.sub(r"\bhighlighting\s+([a-zA-Z\s]+)\s+boundaries\b", "showing the majestic landscape", new_prompt, flags=re.I)
+        new_prompt += " CRITICAL: Pure physical landscape, landmark, or cultural illustration only. Absolutely NO map, NO boundary lines, NO place names, NO text anywhere."
+    return new_prompt

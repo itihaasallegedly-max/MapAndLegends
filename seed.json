@@ -1,176 +1,190 @@
 {
-  "data_source": "teardown_observed",
-  "fetched_at": "2026-09-27T21:30:04+00:00",
-  "post_count": 24,
-  "note": "View counts read off the live @dailygeomap profile on 13 Sep 2026. Real observations, but a ~20-post sample, not age-adjusted, and including the account's pinned picks. Better than the invented priors in SAMPLE_SEED_POSTS; weaker than a full Apify scrape.",
+  "data_source": "own_channel",
+  "fetched_at": "2026-11-08T21:30:23+00:00",
+  "post_count": 26,
+  "note": "View counts read back from 26 of your own published reels via the YouTube and Instagram APIs. These are the only numbers that describe your audience rather than a competitor's.",
   "posts": [
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "Temples of Kerala",
-      "videoViewCount": 7100000,
-      "timestamp": "2026-05-02T10:00:00Z",
-      "title": "TEMPLES OF KERALA"
+      "url": "https://youtube.com/shorts/isOHlLKCfyk",
+      "caption": "Competitor Short D0AWufa4iv4",
+      "videoViewCount": 2764,
+      "timestamp": "2026-09-23T14:12:56",
+      "title": "CANADA LAKES NIGHTMARE"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "Indian Mountains",
-      "videoViewCount": 4400000,
-      "timestamp": "2026-05-16T10:00:00Z",
-      "title": "INDIAN MOUNTAINS"
+      "url": "https://youtube.com/shorts/RpriM31vJLY",
+      "caption": "Famous Temples of Jharkhand",
+      "videoViewCount": 735,
+      "timestamp": "2026-09-27T15:13:49",
+      "title": "JHARKHAND TEMPLES"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "State Fish of India",
-      "videoViewCount": 3700000,
-      "timestamp": "2026-06-01T10:00:00Z",
-      "title": "STATE FISH"
+      "url": "https://youtube.com/shorts/o_G3jij-iNI",
+      "caption": "Geo facts of Theni District Explained in 60 seconds! (lDUJ7sqWscE)",
+      "videoViewCount": 177,
+      "timestamp": "2026-09-27T21:24:23",
+      "title": "THENI DISTRICT"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "Indian Rivers",
-      "videoViewCount": 1600000,
-      "timestamp": "2026-06-14T10:00:00Z",
-      "title": "INDIAN RIVERS"
+      "url": "https://youtube.com/shorts/vFk29aems9Q",
+      "caption": "How a French Invasion Changed Meat Names 🇫🇷🤯 Why Cow Became Beef 🐄 (PPe8yNfztYc)",
+      "videoViewCount": 1585,
+      "timestamp": "2026-09-26T11:56:17",
+      "title": "WHY COW BECAME BEEF"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "State Animals of India",
-      "videoViewCount": 1300000,
-      "timestamp": "2026-06-28T10:00:00Z",
-      "title": "STATE ANIMALS"
+      "url": "https://youtube.com/shorts/odz1SYh9Yyw",
+      "caption": "How America Bought Louisiana 🇺🇸🤯 Napoleon’s $15M Deal 🇫🇷 (BmNSUb8HxCA)",
+      "videoViewCount": 636,
+      "timestamp": "2026-09-25T10:05:49",
+      "title": "AMERICA'S CHEAPEST LAND"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "Kaveri, the river as a woman",
-      "videoViewCount": 1200000,
-      "timestamp": "2026-07-05T10:00:00Z",
-      "title": "KAVERI"
+      "url": "https://youtube.com/shorts/_ODW4y9Orjk",
+      "caption": "How Can France Border the Netherlands? 🇫🇷🇳🇱 Saint Martin 🤯 (Mi543mIs5Ks)",
+      "videoViewCount": 3233,
+      "timestamp": "2026-09-29T11:24:10",
+      "title": "FRANCE NETHERLANDS BORDER"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "Karnataka",
-      "videoViewCount": 1100000,
-      "timestamp": "2026-07-12T10:00:00Z",
-      "title": "ಕರ್ನಾಟಕ"
+      "url": "https://youtube.com/shorts/cM68vNVAp9Q",
+      "caption": "Major Types of Island Formation Explained in (fMAbMgUVALE)",
+      "videoViewCount": 3317,
+      "timestamp": "2026-09-28T16:12:05",
+      "title": "ISLAND TYPES"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "Telangana Temples",
-      "videoViewCount": 1000000,
-      "timestamp": "2026-07-19T10:00:00Z",
-      "title": "TELANGANA TEMPLES"
+      "url": "https://youtube.com/shorts/Ben0JCOxLs8",
+      "caption": "Why 13 Colonies Declared Independence 🇺🇸🤯 How Britain Lost America (pFwruouNxis)",
+      "videoViewCount": 2544,
+      "timestamp": "2026-09-24T16:06:12",
+      "title": "WHY COLONIES UNITED"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "Zonal Councils of India",
-      "videoViewCount": 526000,
-      "timestamp": "2026-07-26T10:00:00Z",
-      "title": "ZONAL COUNCILS"
+      "url": "https://youtube.com/shorts/h52Q5_vy52Y",
+      "caption": "Why Broadway Splits Manhattan🗽 New York’s Oldest Street 🇺🇸 (T2muEW1Jn3M)",
+      "videoViewCount": 2719,
+      "timestamp": "2026-09-24T10:07:42",
+      "title": "WHY BROADWAY SPLITS MANHATTAN"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "Temples of Maharashtra",
-      "videoViewCount": 363000,
-      "timestamp": "2026-08-02T10:00:00Z",
-      "title": "TEMPLES OF MAHARASHTRA"
+      "url": "https://youtube.com/shorts/bGUt6JZ2Qzg",
+      "caption": "Why Cyprus Is Divided 🇨🇾🤯 Europe’s Strangest Island 🇪🇺 (pf2wPSCLr3o)",
+      "videoViewCount": 1487,
+      "timestamp": "2026-09-26T10:40:06",
+      "title": "CYPRUS DIVIDED"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "Spain",
-      "videoViewCount": 271000,
-      "timestamp": "2026-08-09T10:00:00Z",
-      "title": "SPAIN"
+      "url": "https://youtube.com/shorts/23bak4TXvUM",
+      "caption": "Why Google is Releasing Millions of Mosquitoes 🦟🤯 Debug Project 🇺🇸 (NCkQ9WDCftM)",
+      "videoViewCount": 315,
+      "timestamp": "2026-09-26T19:08:16",
+      "title": "GOOGLE DEBUG MOSQUITOES"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "Flash Floods",
-      "videoViewCount": 193000,
-      "timestamp": "2026-08-16T10:00:00Z",
+      "url": "https://youtube.com/shorts/7tdYgH2uyHM",
+      "caption": "Why Is Gibraltar British 🇬🇧🇪🇸 The Rock Spain Wants Back 🤯 (oGrW_SVy-UI)",
+      "videoViewCount": 1929,
+      "timestamp": "2026-09-26T22:30:17",
+      "title": "SPAIN GIBRALTAR"
+    },
+    {
+      "url": "https://youtube.com/shorts/qvZPe85uSBg",
+      "caption": "Longest Flight in the World vs Shortest Flight 🤯 Nonstop Route ✈️ (FmWxPKSGdms)",
+      "videoViewCount": 3823,
+      "timestamp": "2026-09-30T10:13:31",
+      "title": "WORLDS LONGEST VS SHORTEST FLIGHT"
+    },
+    {
+      "url": "https://youtube.com/shorts/jFaOlt3XDmo",
+      "caption": "River Mahanadi Explained ! (8IJwDbOKcME)",
+      "videoViewCount": 1724,
+      "timestamp": "2026-09-29T19:29:51",
+      "title": "MAHANADI RIVER"
+    },
+    {
+      "url": "https://youtube.com/shorts/SDtjQe3hn3M",
+      "caption": "The Difference Between UAE, Dubai & Abu Dhabi 🇦🇪 What Are the Emirates 🤯 (TIP_4hrzLTk)",
+      "videoViewCount": 2272,
+      "timestamp": "2026-10-02T13:01:52",
+      "title": "UAE DUBAI ABU DHABI"
+    },
+    {
+      "url": "https://youtube.com/shorts/RBZUo8Gmznc",
+      "caption": "The Strangest Border Between Sweden & Finland 🇸🇪🇫🇮 Märket Island 🤯 (o4-ZkUMD0eQ)",
+      "videoViewCount": 3203,
+      "timestamp": "2026-10-01T10:13:47",
+      "title": "MARKET ISLAND BORDER"
+    },
+    {
+      "url": "https://youtube.com/shorts/tP-1L7jFoFc",
+      "caption": "Why France is in South America 🇫🇷 French Guiana 🤯 (xAiHu447QUg)",
+      "videoViewCount": 1783,
+      "timestamp": "2026-09-29T21:32:47",
+      "title": "FRANCE IN SOUTH AMERICA"
+    },
+    {
+      "url": "https://youtube.com/shorts/X3f6Kk3gL3Y",
+      "caption": "Why Is the Equator So Hot 🔥😱 and the Poles So Cold? ❄️ (-6nRVtpfKHg)",
+      "videoViewCount": 1930,
+      "timestamp": "2026-10-03T10:08:26",
+      "title": "HOT EQUATOR COLD POLES"
+    },
+    {
+      "url": "https://youtube.com/shorts/s3gEBs_hbqI",
+      "caption": "Why NO Bridge Between Sicily and Italy 🇮🇹 The Strait of Messina 🌊 😱 (xtxTJJBtuww)",
+      "videoViewCount": 1802,
+      "timestamp": "2026-10-04T10:28:48",
+      "title": "SICILY BRIDGE MYSTERY"
+    },
+    {
+      "url": "https://youtube.com/shorts/CAjVH7wfQAM",
+      "caption": "Why Not All EU Countries Use Euro 🇪🇺💶 Eurozone Problem 🤯 (E6J3Etw2QFw)",
+      "videoViewCount": 1700,
+      "timestamp": "2026-09-29T20:44:00",
+      "title": "EUROPE NOT IN EURO"
+    },
+    {
+      "url": "https://youtube.com/shorts/7rSIUf6p9F4",
+      "caption": "Flash Floods :MAJOR CAUSES (JB-qk40RdCs)",
+      "videoViewCount": 1268,
+      "timestamp": "2026-10-07T12:18:57",
       "title": "FLASH FLOODS"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "Periyar",
-      "videoViewCount": 114000,
-      "timestamp": "2026-08-20T10:00:00Z",
-      "title": "പെരിയാർ നദി"
+      "url": "https://youtube.com/shorts/5YgXz3WDzGc",
+      "caption": "Geography and Facts of Uttar Pradesh",
+      "videoViewCount": 1571,
+      "timestamp": "2026-10-06T16:23:34",
+      "title": "UTTAR PRADESH"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "India Post",
-      "videoViewCount": 88800,
-      "timestamp": "2026-08-24T10:00:00Z",
-      "title": "INDIA POST"
+      "url": "https://youtube.com/shorts/G3OKksNXRBM",
+      "caption": "How Switzerland Avoided Invasion in WWII🇨🇭Surrounded by War 🏔️ (xTbZNJCLHQw)",
+      "videoViewCount": 1803,
+      "timestamp": "2026-10-05T14:15:46",
+      "title": "SWITZERLAND NEUTRALITY"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "Tapi",
-      "videoViewCount": 78500,
-      "timestamp": "2026-08-28T10:00:00Z",
-      "title": "तापी"
+      "url": "https://youtube.com/shorts/f62vN2FQFtk",
+      "caption": "Postal Codes of India Explained! (cxpi4nV9HO0)",
+      "videoViewCount": 579,
+      "timestamp": "2026-10-07T12:54:53",
+      "title": "भारत का पिन कोड"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "The Ahom kingdom",
-      "videoViewCount": 72200,
-      "timestamp": "2026-08-31T10:00:00Z",
-      "title": "AHOM"
+      "url": "https://youtube.com/shorts/ixRZ29Edjl4",
+      "caption": "Kasargod District Explained! (ZKh_oVFWbq8)",
+      "videoViewCount": 2588,
+      "timestamp": "2026-11-08T20:39:19",
+      "title": "KASARGOD"
     },
     {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "Mahanadi",
-      "videoViewCount": 68800,
-      "timestamp": "2026-09-03T10:00:00Z",
-      "title": "महानदी"
-    },
-    {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "National Symbols of India",
-      "videoViewCount": 43000,
-      "timestamp": "2026-09-10T10:00:00Z",
-      "title": "NATIONAL SYMBOLS"
-    },
-    {
-      "url": "https://www.instagram.com/dailygeomap/",
-      "caption": "Russia",
-      "videoViewCount": 34000,
-      "timestamp": "2026-09-12T10:00:00Z",
-      "title": "RUSSIA"
-    },
-    {
-      "url": "https://www.youtube.com/@GeoGlobeTales/shorts",
-      "caption": "Why People Settled the Most Remote Island",
-      "videoViewCount": 1000000,
-      "timestamp": "2026-08-01T10:00:00Z",
-      "title": "MOST REMOTE ISLAND"
-    },
-    {
-      "url": "https://www.youtube.com/@GeoGlobeTales/shorts",
-      "caption": "Why Virginia Split Into Two States",
-      "videoViewCount": 2100000,
-      "timestamp": "2026-08-10T10:00:00Z",
-      "title": "VIRGINIA SPLIT"
-    },
-    {
-      "url": "https://www.youtube.com/@GeoGlobeTales/shorts",
-      "caption": "The True Size of Hawaii",
-      "videoViewCount": 1400000,
-      "timestamp": "2026-08-20T10:00:00Z",
-      "title": "TRUE SIZE OF HAWAII"
-    },
-    {
-      "url": "https://www.youtube.com/@GeoGlobeTales/shorts",
-      "caption": "Why the Great Lakes Are So Great",
-      "videoViewCount": 1300000,
-      "timestamp": "2026-09-01T10:00:00Z",
-      "title": "GREAT LAKES"
-    },
-    {
-      "url": "https://www.youtube.com/@GeoGlobeTales/shorts",
-      "caption": "Why is the Netherlands Called Holland?",
-      "videoViewCount": 818000,
-      "timestamp": "2026-09-10T10:00:00Z",
-      "title": "NETHERLANDS HOLLAND"
+      "url": "https://youtube.com/shorts/a2-4VkhGkEE",
+      "caption": "Why the Caspian Sea is Not a Sea 🌊🤯 World's Largest Lake (xGmyqt_Ild0)",
+      "videoViewCount": 3801,
+      "timestamp": "2026-11-07T10:16:23",
+      "title": "CASPIAN SEA OR LAKE"
     }
   ]
 }

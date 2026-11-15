@@ -773,6 +773,8 @@ def validate_script(data, topic_spec, window=None, faithful=False):
             seg["seconds"] = float(seg.get("seconds", 0))
         except (TypeError, ValueError):
             raise ScriptGenerationError(f"Segment {i} has a non-numeric 'seconds': {seg!r}")
+        if not seg.get("per_second") or not isinstance(seg["per_second"], list):
+            seg["per_second"] = [seg["video_prompt"]] * max(1, int(seg["seconds"]))
         
     # Pace: a segment over MAX_WPS used to reject the whole script, and a
     # 3.5 w/s line cost a full Gemini round-trip (5 of those = no reel that
@@ -1533,9 +1535,9 @@ def generate_script_prompt2(topic_spec):
         if faithful else
         "WATCH THE ATTACHED COMPETITOR VIDEO. You must replicate its visuals EXACTLY frame-by-frame. "
         "For the script, use their spoken audio as a baseline but adapt it into your own words (some "
-        "creators speak artificially fast; do not transcribe them word-for-word), keeping every item "
-        "and beat they cover. For each segment, your 'video_prompt' and 'per_second' visual "
-        "breakdowns must match the competitor's visual sequence.") if video_file_obj else ""
+        "creators speak artificially fast; do not transcribe them word-for-word). Summarize and condense "
+        "where needed so the final script fits comfortably under the platform time limit. For each segment, "
+        "your 'video_prompt' and 'per_second' visual breakdowns must match the competitor's visual sequence.") if video_file_obj else ""
 
     prompt = f"""
     You write scripts for vertical geography videos aimed at an Indian audience,
@@ -1621,7 +1623,15 @@ def generate_script_prompt2(topic_spec):
       must never ask for written words, labels, place names, numbers, titles,
       signs or map text — show places with pins, glowing river lines, colour
       fills, icons and camera moves only. Names and numbers go in "labels";
-      we put those on screen ourselves, spelled correctly.
+      we put those on screen ourselves, spelled correctly. Avoid using the word
+      'map' in prompts without specifying 'clean 3D physical satellite terrain
+      view without any text, labels, or cartographic writing'.
+    - COMPARISONS: If the narration mentions another country, state, or region
+      purely as a benchmark or comparison (e.g. 'area equal to Pakistan', 'size
+      of the UK', 'larger than France'), the visual MUST STAY STRICTLY FOCUSED
+      ON THE PRIMARY TOPIC IN INDIA. Explicitly instruct in video_prompt and
+      background: 'DO NOT show, highlight, or center on <comparison country>'.
+      Never let a comparison entity trigger visuals of the benchmark country.
     - SPOKEN TEXT IS DEVANAGARI ONLY: every name, dish and English word in
       "text" is written in Hindi letters (थलासेरी बिरयानी, फिश मोली, स्टू),
       never in English letters — the voice reads English letters with an
@@ -1938,8 +1948,8 @@ def generate_script_prompt2(topic_spec):
     print(
         f"[Prompt 2] Script for '{subject}': {len(data.get('segments', []))} scenes, "
         f"est. audio {data.get('estimated_audio_s')}s, "
-        f"{len(data['facts'])} checkable claims, "
-        f"{sum(len(s['per_second']) for s in data['segments'])} per-second prompts"
+        f"{len(data.get('facts', []))} checkable claims, "
+        f"{sum(len(s.get('per_second') or []) for s in data.get('segments', []))} per-second prompts"
     )
     return data
 

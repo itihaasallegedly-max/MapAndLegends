@@ -358,12 +358,19 @@ def _ig_publish_via_url(video_path, meta, ig_user_id, access_token, root, attemp
         }, timeout=60)
         if resp.status_code != 200:
             raise PublishError(f"Container creation failed ({resp.status_code}): {_graph_error(resp)}")
-        container_id = resp.json().get("id")
+        try:
+            container_id = resp.json().get("id")
+        except Exception as e:
+            raise PublishError(f"Container creation returned non-JSON ({resp.status_code}): {resp.text[:400]}")
         code, detail = None, ""
         for i in range(1, IG_POLL_ATTEMPTS + 1):
             time.sleep(IG_POLL_SECONDS)
-            st = _net_get(f"{root}/{container_id}", params={
-                "fields": "status_code,status", "access_token": access_token}, timeout=60).json()
+            st_resp = _net_get(f"{root}/{container_id}", params={
+                "fields": "status_code,status", "access_token": access_token}, timeout=60)
+            try:
+                st = st_resp.json()
+            except Exception:
+                raise PublishError(f"Status poll returned non-JSON ({st_resp.status_code}): {st_resp.text[:400]}")
             code, detail = st.get("status_code"), st.get("status", "")
             if code in ("FINISHED", "ERROR"):
                 break

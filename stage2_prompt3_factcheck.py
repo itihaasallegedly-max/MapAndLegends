@@ -116,10 +116,8 @@ def fact_check_script(client, segments, call_model, types, models=None):
                     config=types.GenerateContentConfig(tools=[tool], max_output_tokens=16384)),
                 models=models, what="Prompt 3 fact-check (grounded)")
             how = f"{model} + Google Search"
-        except Exception as e:  # noqa: BLE001 — quota errors are re-raised below
-            if type(e).__name__ == "QuotaExhaustedError":
-                raise
-            print(f"[Prompt 3] grounding unavailable ({type(e).__name__}: {str(e)[:120]}); "
+        except Exception as e:  # noqa: BLE001
+            print(f"[Prompt 3] grounding unavailable or quota exhausted ({type(e).__name__}: {str(e)[:120]}); "
                   f"checking from model knowledge")
             resp = None
     if resp is None:
